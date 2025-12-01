@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: fba_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: fba
+      MYSQL_USER: fba
+      MYSQL_PASSWORD: fba_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+
+  backend:
+    build:
+      context: ./backend_docker
+      dockerfile: Dockerfile
+    container_name: fba_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:stable
+    container_name: fba_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./backend/public:/var/www/html/public
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: fba_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/usr/src/app
+    depends_on:
+      - backend
+
