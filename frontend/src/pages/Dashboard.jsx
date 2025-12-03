@@ -1,39 +1,38 @@
-import React, { useEffect, useState } from 'react'
-import { api } from '../api'
+import { useEffect, useState } from "react";
+import axiosClient from "../api/axiosClient";
 
 export default function Dashboard() {
-  const [stats, setStats] = useState(null)
-  const [loading, setLoading] = useState(true)
+    const [data, setData] = useState(null);
 
-  useEffect(() => {
-    api.get('/dashboard')
-      .then(res => setStats(res.data))
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+    useEffect(() => {
+        axiosClient.get("/dashboard")
+            .then((res) => setData(res.data))
+            .catch((err) => console.error(err));
+    }, []);
 
-  if (loading) return <div>加载中...</div>
-  if (!stats) return <div>无法加载统计信息</div>
+    if (!data) return <p>加载中...</p>;
 
-  const cardStyle = {
-    background: '#fff',
-    padding: 16,
-    borderRadius: 10,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    flex: 1,
-    minWidth: 160,
-  }
+    return (
+        <div>
+            <h2>后台首页</h2>
 
-  return (
-    <div>
-      <h1 style={{ marginTop: 0 }}>主页</h1>
-      <div style={{ display: 'flex', gap: 16, marginTop: 16, flexWrap: 'wrap' }}>
-        <div style={cardStyle}>操作员人数：{stats.operator_count}</div>
-        <div style={cardStyle}>审核员人数：{stats.reviewer_count}</div>
-        <div style={cardStyle}>提交产品数量：{stats.product_count}</div>
-        <div style={cardStyle}>审核通过：{stats.approved_count}</div>
-        <div style={cardStyle}>未通过：{stats.rejected_count}</div>
-      </div>
-    </div>
-  )
+            <ul>
+                <li>提交产品总数：{data.total_products}</li>
+                <li>审核通过：{data.approved_products}</li>
+                <li>审核中：{data.pending_products}</li>
+                <li>审核拒绝：{data.rejected_products}</li>
+                <li>操作员人数：{data.operator_count}</li>
+                <li>审核员人数：{data.reviewer_count}</li>
+            </ul>
+
+            <h3>最近登录</h3>
+            <ul>
+                {data.recent_logins.map((log) => (
+                    <li key={log.id}>
+                        {log.user?.name} —— {log.logged_in_at}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 }

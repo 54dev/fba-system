@@ -3,95 +3,85 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\ProductReview;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
+    // 1. 产品列表（权限：操作员只能看自己的）
     public function index(Request $request)
     {
         $user = $request->user();
 
-        $query = Product::with('operator');
+        $query = Product::with('user');
 
+        // 操作员只能看自己的产品
         if ($user->role === 'operator') {
-            $query->where('operator_id', $user->id);
+            $query->where('user_id', $user->id);
         }
 
-        $products = $query->orderByDesc('created_at')->get()->map(function ($p) {
-            return [
-                'id'              => $p->id,
-                'date'            => $p->created_at->toDateTimeString(),
-                'image_url'       => $p->image_path ? Storage::disk('public')->url($p->image_path) : null,
-                'ref_link1'       => $p->ref_link1,
-                'ref_link2'       => $p->ref_link2,
-                'ref_link3'       => $p->ref_link3,
-                'reason'          => $p->reason,
-                'differentiation' => $p->differentiation,
-                'review_status'   => $p->review_status,
-                'operator_name'   => $p->operator?->name,
-            ];
-        });
-
-        return response()->json($products);
+        return $query->orderBy('id', 'desc')->get();
     }
 
+    // 2. 添加产品
     public function store(Request $request)
     {
-        $user = $request->user();
-
-        $data = $request->validate([
-            'image'          => 'required|image',
-            'ref_link1'      => 'required|url',
-            'ref_link2'      => 'nullable|url',
-            'ref_link3'      => 'nullable|url',
-            'reason'         => 'required|string',
-            'differentiation'=> 'required|string',
+        $validated = $request->validate([
+            'image' => 'required|image',
+            'reference_link_1' => 'required|string',
+            'reference_link_2' => 'nullable|string',
+            'reference_link_3' => 'nullable|string',
+            'reason' => 'required|string',
+            'differentiation' => 'required|string',
         ]);
 
+        // 保存图片
         $path = $request->file('image')->store('products', 'public');
 
         $product = Product::create([
-            'operator_id'     => $user->id,
-            'image_path'      => $path,
-            'ref_link1'       => $data['ref_link1'],
-            'ref_link2'       => $data['ref_link2'] ?? null,
-            'ref_link3'       => $data['ref_link3'] ?? null,
-            'reason'          => $data['reason'],
-            'differentiation' => $data['differentiation'],
-            'review_status'   => 'pending',
+            'user_id' => $request->user()->id,
+            'image_path' => $path,
+            'reference_link_1' => $validated['reference_link_1'],
+            'reference_link_2' => $validated['reference_link_2'] ?? null,
+            'reference_link_3' => $validated['reference_link_3'] ?? null,
+            'reason' => $validated['reason'],
+            'differentiation' => $validated['differentiation'],
+            'review_result' => 'pending',
         ]);
 
-        return response()->json($product, 201);
+        return response()->json([
+            'message' => 'Product created successfully',
+            'product' => $product
+        ], 201);
     }
 
+    // 3. 查看产品
+    public function show(Product $product)
+    {
+        return $product->load('user');
+    }
+
+    // 4. 审核产品（管理员 + 审核员）
     public function updateReview(Request $request, Product $product)
     {
-        $user = $request->user();
-
-        $data = $request->validate([
-            'result'  => 'required|in:approved,rejected',
+        $validated = $request->validate([
+            'result' => 'required|in:approved,rejected',
             'comment' => 'nullable|string',
         ]);
 
-        $product->review_status = $data['result'];
-        $product->save();
+        // 更新产品审核状态
+        $product->update([
+            'review_result' => $validated['result']
+        ]);
 
-        ProductReview::create([
-            'product_id'  => $product->id,
-            'reviewer_id' => $user->id,
-            'result'      => $data['result'],
-            'comment'     => $data['comment'] ?? null,
+        // 写入审核日志
+        \App\Models\ReviewLog::create([
+            'product_id' => $product->id,
+            'reviewer_id' => $request->user()->id,
+            'result' => $validated['result'],
+            'comment' => $validated['comment'] ?? null,
         ]);
 
         return response()->json(['message' => 'Review updated']);
-    }
-
-    public function show(Product $product)
-    {
-        $product->load('operator', 'reviews.reviewer');
-
-        return response()->json($product);
     }
 }

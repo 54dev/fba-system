@@ -28,9 +28,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/products/{product}/review', [ProductController::class, 'updateReview'])
         ->middleware('role:admin,reviewer');
 
-    // 审核记录（管理员 + 审核员）
-    Route::get('/reviews', [ProductReviewController::class, 'index'])
-        ->middleware('role:admin,reviewer');
+    Route::post('/users', [UserController::class, 'store'])
+        ->middleware('role:admin');
+    
 
     // 登录日志（仅管理员）
     Route::get('/login-logs', [LoginLogController::class, 'index'])
