@@ -6,46 +6,39 @@ use App\Models\User;
 use App\Models\LoginLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email'    => ['required', 'email'],
-            'password' => ['required'],
+        $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required',
         ]);
 
-        $user = User::where('email', $credentials['email'])->first();
+        /** @var User|null $user */
+        $user = User::where('email', $request->email)->first();
 
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['账号或密码不正确'],
-            ]);
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
         // 更新最后登录时间
         $user->last_login_at = now();
         $user->save();
 
-        // 写入登录日志
+        // 写登录日志
         LoginLog::create([
-            'user_id'      => $user->id,
-            'logged_in_at' => now(),
+            'user_id'    => $user->id,
+            'login_time' => now(),
         ]);
 
-        // 创建 Sanctum token（前端用 Bearer token 访问）
-        $token = $user->createToken('web')->plainTextToken;
+        // Sanctum 生成 token
+        $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
             'token' => $token,
-            'user'  => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'email' => $user->email,
-                'role'  => $user->role,
-            ],
+            'user'  => $user,
         ]);
     }
 
@@ -56,11 +49,11 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        /** @var User $user */
         $user = $request->user();
 
-        if ($user && $user->currentAccessToken()) {
-            $user->currentAccessToken()->delete();
-        }
+        // 删除当前 token
+        $user->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Logged out']);
     }

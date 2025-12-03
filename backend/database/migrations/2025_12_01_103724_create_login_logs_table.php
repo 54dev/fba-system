@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
-            $table->timestamp('logged_in_at');
+            $table->timestamp('logged_in_at')->useCurrent();
         });
     }
 

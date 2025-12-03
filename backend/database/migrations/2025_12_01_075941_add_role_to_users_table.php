@@ -9,7 +9,8 @@ return new class extends Migration
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            //$table->string('role')->default('operator'); // 默认操作员
+            $table->string('role')->default('operator');
+            $table->timestamp('last_login_at')->nullable();
         });
     }
     
