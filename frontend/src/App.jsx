@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import Navbar from './components/Navbar';
+import React from 'react';
+import { Routes, Route, Link } from 'react-router-dom';
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -8,122 +7,46 @@ import ProductList from './pages/ProductList';
 import ProductCreate from './pages/ProductCreate';
 import ReviewList from './pages/ReviewList';
 import LoginLog from './pages/LoginLog';
-import { fetchMe } from './api';
+import UserPage from './pages/UserPage';
 
-function ProtectedRoute({ children, user }) {
-  const location = useLocation();
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-  return children;
-}
-
-function RoleRoute({ children, user, allow }) {
-  if (!user) return <Navigate to="/login" replace />;
-  if (!allow.includes(user.role)) {
-    return <div style={{ padding: '20px', color: 'red' }}>无访问权限</div>;
-  }
-  return children;
-}
-
-function App() {
-  const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem('user');
-    try {
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [checking, setChecking] = useState(true);
-
-  useEffect(() => {
-    const check = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setChecking(false);
-        return;
-      }
-      try {
-        const me = await fetchMe();
-        setUser(me);
-        localStorage.setItem('user', JSON.stringify(me));
-      } catch (err) {
-        console.error('fetchMe failed', err);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setUser(null);
-      } finally {
-        setChecking(false);
-      }
-    };
-    check();
-  }, []);
-
-  if (checking) {
-    return <div style={{ padding: '20px' }}>加载中...</div>;
-  }
-
+// 布局组件
+function Layout({ children }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#f3f4f6' }}>
-      <Navbar user={user} />
+    <div style={{ display: 'flex' }}>
+      <nav style={{ width: '200px', padding: '20px' }}>
+        <ul>
+          <li><Link to="/dashboard">主页</Link></li>
+          <li><Link to="/products">产品列表</Link></li>
+          <li><Link to="/products/create">添加产品</Link></li>
+          <li><Link to="/reviews">审核记录</Link></li>
+          <li><Link to="/login-logs">登录日志</Link></li>
+          <li><Link to="/users">用户管理</Link></li>
+        </ul>
+      </nav>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', background: '#fff', minHeight: 'calc(100vh - 56px)' }}>
-        <Routes>
-          <Route path="/login" element={<Login onLogin={setUser} />} />
-
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute user={user}>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/products"
-            element={
-              <ProtectedRoute user={user}>
-                <ProductList user={user} />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/products/create"
-            element={
-              <ProtectedRoute user={user}>
-                <ProductCreate />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/reviews"
-            element={
-              <RoleRoute user={user} allow={['admin', 'reviewer']}>
-                <ReviewList />
-              </RoleRoute>
-            }
-          />
-
-          <Route
-            path="/login-logs"
-            element={
-              <RoleRoute user={user} allow={['admin']}>
-                <LoginLog />
-              </RoleRoute>
-            }
-          />
-
-          <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
-          <Route path="*" element={<div style={{ padding: '20px' }}>页面不存在</div>} />
-        </Routes>
-      </div>
+      <main style={{ padding: '20px', flexGrow: 1 }}>
+        {children}
+      </main>
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Login />} />
 
+      <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+
+      <Route path="/products" element={<Layout><ProductList /></Layout>} />
+
+      <Route path="/products/create" element={<Layout><ProductCreate /></Layout>} />
+
+      <Route path="/reviews" element={<Layout><ReviewList /></Layout>} />
+
+      <Route path="/login-logs" element={<Layout><LoginLog /></Layout>} />
+
+      <Route path="/users" element={<Layout><UserPage /></Layout>} />
+    </Routes>
+  );
+}

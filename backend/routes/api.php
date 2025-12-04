@@ -2,37 +2,41 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\LoginLogController;
+use App\Http\Controllers\UserController;
+use App\Http\Middleware\RoleMiddleware;
 
-// 登录
 Route::post('/login', [AuthController::class, 'login']);
 
-// 需要登录的接口
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // 仪表盘统计
-    Route::get('/dashboard', [DashboardController::class, 'index']);
+    // 主页统计信息
+    Route::get('/dashboard', [ProductController::class, 'dashboard']);
 
-    // 产品列表 & 添加
+    // 产品列表 + 提交产品
     Route::get('/products', [ProductController::class, 'index']);
     Route::post('/products', [ProductController::class, 'store']);
-    Route::get('/products/{product}', [ProductController::class, 'show']);
 
-    // 审核（管理员 + 审核员）
+    // 审核产品（审核员 + 管理员）
     Route::put('/products/{product}/review', [ProductController::class, 'updateReview'])
-        ->middleware('role:admin,reviewer');
+        ->middleware(RoleMiddleware::class . ':admin,reviewer');
 
-    Route::post('/users', [UserController::class, 'store'])
-        ->middleware('role:admin');
-    
+    // 审核记录列表（审核员 + 管理员）
+    Route::get('/reviews', [ProductReviewController::class, 'index'])
+        ->middleware(RoleMiddleware::class . ':admin,reviewer');
 
-    // 登录日志（仅管理员）
+    // 登录日志（只有管理员）
     Route::get('/login-logs', [LoginLogController::class, 'index'])
-        ->middleware('role:admin');
+        ->middleware(RoleMiddleware::class . ':admin');
+
+    // 用户管理（只有管理员：创建审核员/操作员）
+    Route::get('/users', [UserController::class, 'index'])
+        ->middleware(RoleMiddleware::class . ':admin');
+    Route::post('/users', [UserController::class, 'store'])
+        ->middleware(RoleMiddleware::class . ':admin');
 });

@@ -3,8 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ReviewLog extends Model
+class ProductReview extends Model
 {
     protected $fillable = [
         'product_id',
@@ -13,12 +14,12 @@ class ReviewLog extends Model
         'comment',
     ];
 
-    public function product()
+    public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    public function reviewer()
+    public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewer_id');
     }

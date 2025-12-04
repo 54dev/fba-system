@@ -10,23 +10,23 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = [
-        'operator_id',
+        'user_id',
         'image_path',
-        'ref_link1',
-        'ref_link2',
-        'ref_link3',
+        'reference_link_1',
+        'reference_link_2',
+        'reference_link_3',
         'reason',
         'differentiation',
-        'review_status',
+        'review_result',
     ];
 
-    public function operator()
+    public function user()
     {
-        return $this->belongsTo(User::class, 'operator_id');
+        return $this->belongsTo(User::class);
     }
 
     public function reviews()
     {
-        
+        return $this->hasMany(ProductReview::class);
     }
 }

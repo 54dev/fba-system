@@ -1,71 +1,95 @@
-import axios from 'axios';
+const API_BASE = "http://localhost/api";
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api'
-});
+// 统一封装请求
+async function request(url, options = {}) {
+  const token = localStorage.getItem("token");
 
-// 每次请求自动带上 token
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const headers = options.headers || {};
+  if (!(options.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
   }
-  return config;
-});
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
-export const login = async (email, password) => {
-  const res = await api.post('/login', { email, password });
-  // 预期后端返回: { token: 'xxx', user: { ... } }
-  return res.data;
-};
+  const res = await fetch(`${API_BASE}${url}`, {
+    ...options,
+    headers,
+  });
 
-export const fetchMe = async () => {
-  const res = await api.get('/me');
-  return res.data;
-};
+  if (!res.ok) {
+    throw new Error(`API Error: ${res.status}`);
+  }
 
-export const logout = async () => {
-  await api.post('/logout');
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-};
+  return res.json();
+}
 
-export const fetchDashboardStats = async () => {
-  const res = await api.get('/dashboard');
-  return res.data;
-};
+// 登录
+export function login(email, password) {
+  return request("/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
 
-export const fetchProducts = async () => {
-  const res = await api.get('/products');
-  return res.data; // 预期是数组
-};
+// 获取当前用户
+export function fetchMe() {
+  return request("/me");
+}
 
-export const createProduct = async (formData) => {
-  // formData: 已经是 FormData 对象（包含图片）
-  const res = await api.post('/products', formData, {
+// Dashboard 统计
+export function fetchDashboardStats() {
+  return request("/dashboard");
+}
+
+// 产品列表
+export function fetchProducts() {
+  return request("/products");
+}
+
+// 添加产品（文件上传）
+export function createProduct(formData) {
+  const token = localStorage.getItem("token");
+
+  return fetch(`${API_BASE}/products`, {
+    method: "POST",
     headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  }).then((res) => {
+    if (!res.ok) throw new Error("Upload failed");
+    return res.json();
   });
-  return res.data;
-};
+}
 
-export const updateProductReview = async (productId, reviewResult) => {
-  const res = await api.put(`/products/${productId}/review`, {
-    review_result: reviewResult
+// 更新审核
+export function updateProductReview(productId, data) {
+  return request(`/products/${productId}/review`, {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
-  return res.data;
-};
+}
 
-export const fetchReviews = async () => {
-  const res = await api.get('/reviews');
-  return res.data;
-};
+// 审核记录
+export function fetchReviews() {
+  return request("/reviews");
+}
 
-export const fetchLoginLogs = async () => {
-  const res = await api.get('/login-logs');
-  return res.data;
-};
+// 登录日志
+export function fetchLoginLogs() {
+  return request("/login-logs");
+}
 
-export default api;
+// 用户列表
+export function fetchUsers() {
+  return request("/users");
+}
 
+// 创建用户
+export function createUser(data) {
+  return request("/users", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
