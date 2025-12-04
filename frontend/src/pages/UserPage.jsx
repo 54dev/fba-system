@@ -1,63 +1,77 @@
 import React, { useEffect, useState } from "react";
+import { Table, Button, Form, Input, Select, Modal, message } from "antd";
 import { fetchUsers, createUser } from "../api";
 
 export default function UserPage() {
   const [users, setUsers] = useState([]);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    role: "operator"
-  });
+  const [open, setOpen] = useState(false);
 
-  const load = async () => {
-    const res = await fetchUsers();
-    setUsers(res);
+  const loadUsers = () => {
+    fetchUsers()
+      .then(setUsers)
+      .catch(() => message.error("加载失败"));
   };
 
   useEffect(() => {
-    load();
+    loadUsers();
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    await createUser(form);
-    setForm({ name: "", email: "", password: "", role: "operator" });
-    load();
+  const onFinish = async (values) => {
+    try {
+      await createUser(values);
+      message.success("用户创建成功");
+      setOpen(false);
+      loadUsers();
+    } catch {
+      message.error("创建失败");
+    }
   };
+
+  const columns = [
+    { title: "姓名", dataIndex: "name" },
+    { title: "邮箱", dataIndex: "email" },
+    { title: "角色", dataIndex: "role" },
+  ];
 
   return (
     <div>
       <h2>用户管理</h2>
 
-      <form onSubmit={handleSubmit}>
-        <input placeholder="姓名" value={form.name}
-               onChange={(e) => setForm({ ...form, name: e.target.value })} />
+      <Button type="primary" onClick={() => setOpen(true)} style={{ marginBottom: 20 }}>
+        创建用户
+      </Button>
 
-        <input placeholder="邮箱" value={form.email}
-               onChange={(e) => setForm({ ...form, email: e.target.value })} />
+      <Table rowKey="id" dataSource={users} columns={columns} />
 
-        <input placeholder="密码" type="password" value={form.password}
-               onChange={(e) => setForm({ ...form, password: e.target.value })} />
+      <Modal open={open} title="创建用户" onCancel={() => setOpen(false)} footer={null}>
+        <Form layout="vertical" onFinish={onFinish}>
+          <Form.Item name="name" label="姓名" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
 
-        <select value={form.role}
-                onChange={(e) => setForm({ ...form, role: e.target.value })}>
-          <option value="operator">操作员</option>
-          <option value="reviewer">审核员</option>
-          <option value="admin">管理员</option>
-        </select>
+          <Form.Item name="email" label="邮箱" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
 
-        <button type="submit">创建用户</button>
-      </form>
+          <Form.Item name="password" label="密码" rules={[{ required: true }]}>
+            <Input.Password />
+          </Form.Item>
 
-      <hr />
+          <Form.Item name="role" label="角色" rules={[{ required: true }]}>
+            <Select
+              options={[
+                { value: "admin", label: "管理员" },
+                { value: "reviewer", label: "审核员" },
+                { value: "operator", label: "操作员" },
+              ]}
+            />
+          </Form.Item>
 
-      <h3>用户列表</h3>
-      <ul>
-        {users.map((u) => (
-          <li key={u.id}>{u.name} - {u.email} - {u.role}</li>
-        ))}
-      </ul>
+          <Button type="primary" htmlType="submit" block>
+            提交
+          </Button>
+        </Form>
+      </Modal>
     </div>
   );
 }

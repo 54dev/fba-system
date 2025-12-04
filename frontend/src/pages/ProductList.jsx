@@ -1,159 +1,97 @@
-import React, { useEffect, useState } from 'react';
-import { fetchProducts, updateProductReview } from '../api';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { Table, Tag, Button, message, Image } from "antd";
+import { fetchProducts, updateProductReview } from "../api";
 
-function ProductList({ user }) {
+export default function ProductList() {
   const [products, setProducts] = useState([]);
-  const [savingId, setSavingId] = useState(null);
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
 
-  const role = user?.role;
-
-  const load = async () => {
-    try {
-      const data = await fetchProducts();
-      // 预期 data 是数组，如果后端返回 {data: []}，可以改成 data.data
-      setProducts(Array.isArray(data) ? data : data.data || []);
-    } catch (err) {
-      console.error(err);
-      setError('加载产品列表失败');
-    }
+  const loadProducts = () => {
+    fetchProducts()
+      .then((res) => setProducts(res))
+      .catch(() => message.error("加载失败"));
   };
 
   useEffect(() => {
-    load();
+    loadProducts();
   }, []);
 
-  const handleReviewChange = async (productId, value) => {
-    if (role !== 'admin' && role !== 'reviewer') return;
-
-    setSavingId(productId);
+  const handleReview = async (id, result) => {
     try {
-      await updateProductReview(productId, value);
-      await load();
-    } catch (err) {
-      console.error(err);
-      alert('更新审核结果失败');
-    } finally {
-      setSavingId(null);
+      await updateProductReview(id, { result });
+      message.success("审核已更新");
+      loadProducts();
+    } catch {
+      message.error("审核失败");
     }
   };
 
-  const formatLink = (url) => {
-    if (!url) return null;
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    return 'https://' + url;
-  };
+  const columns = [
+    {
+      title: "图片",
+      dataIndex: "image_path",
+      render: (path) => (
+        <Image width={80} src={`/storage/${path}`} />
+      ),
+    },
+    {
+      title: "提交人",
+      dataIndex: ["user", "name"],
+    },
+    {
+      title: "参考链接",
+      render: (_, row) => (
+        <div>
+          <a href={row.reference_link_1} target="_blank">链接1</a><br />
+          {row.reference_link_2 && (
+            <a href={row.reference_link_2} target="_blank">链接2</a>
+          )}
+          <br />
+          {row.reference_link_3 && (
+            <a href={row.reference_link_3} target="_blank">链接3</a>
+          )}
+        </div>
+      ),
+    },
+    { title: "开发理由", dataIndex: "reason" },
+    { title: "差异化", dataIndex: "differentiation" },
+    {
+      title: "审核状态",
+      dataIndex: "review_result",
+      render: (status) => {
+        const map = {
+          pending: <Tag color="gold">待审核</Tag>,
+          approved: <Tag color="green">通过</Tag>,
+          rejected: <Tag color="red">拒绝</Tag>,
+        };
+        return map[status];
+      },
+    },
+    {
+      title: "操作",
+      render: (_, row) => (
+        <div>
+          <Button
+            type="primary"
+            onClick={() => handleReview(row.id, "approved")}
+            style={{ marginRight: 10 }}
+          >
+            通过
+          </Button>
+          <Button
+            danger
+            onClick={() => handleReview(row.id, "rejected")}
+          >
+            拒绝
+          </Button>
+        </div>
+      )
+    }
+  ];
 
   return (
-    <div style={{ padding: '20px' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginBottom: '16px',
-          alignItems: 'center'
-        }}
-      >
-        <h2>产品列表</h2>
-        <button
-          onClick={() => navigate('/products/create')}
-          style={{
-            padding: '8px 12px',
-            borderRadius: '4px',
-            border: 'none',
-            background: '#16a34a',
-            color: '#fff',
-            cursor: 'pointer'
-          }}
-        >
-          添加产品
-        </button>
-      </div>
-
-      {error && <div style={{ color: 'red', marginBottom: '8px' }}>{error}</div>}
-
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-        <thead>
-          <tr>
-            <th>日期</th>
-            <th>图片</th>
-            <th>参考链接</th>
-            <th>开发理由</th>
-            <th>差异化</th>
-            <th>操作员</th>
-            <th>审核结果</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((p) => (
-            <tr key={p.id}>
-              <td>{p.created_at}</td>
-              <td>
-                {p.image_path && (
-                  <img
-                    src={formatLink(p.image_url || p.image_path)}
-                    alt=""
-                    style={{ width: '60px', height: '60px', objectFit: 'cover' }}
-                  />
-                )}
-              </td>
-              <td>
-                {p.reference_link_1 && (
-                  <div>
-                    <a href={formatLink(p.reference_link_1)} target="_blank" rel="noreferrer">
-                      链接1
-                    </a>
-                  </div>
-                )}
-                {p.reference_link_2 && (
-                  <div>
-                    <a href={formatLink(p.reference_link_2)} target="_blank" rel="noreferrer">
-                      链接2
-                    </a>
-                  </div>
-                )}
-                {p.reference_link_3 && (
-                  <div>
-                    <a href={formatLink(p.reference_link_3)} target="_blank" rel="noreferrer">
-                      链接3
-                    </a>
-                  </div>
-                )}
-              </td>
-              <td style={{ maxWidth: '220px', whiteSpace: 'pre-wrap' }}>{p.reason}</td>
-              <td style={{ maxWidth: '220px', whiteSpace: 'pre-wrap' }}>{p.differentiation}</td>
-              <td>{p.user?.name ?? '-'}</td>
-              <td>
-                {role === 'admin' || role === 'reviewer' ? (
-                  <select
-                    value={p.review_result || 'pending'}
-                    disabled={savingId === p.id}
-                    onChange={(e) => handleReviewChange(p.id, e.target.value)}
-                  >
-                    <option value="pending">待审核</option>
-                    <option value="approved">通过</option>
-                    <option value="rejected">不通过</option>
-                  </select>
-                ) : (
-                  p.review_result || 'pending'
-                )}
-              </td>
-            </tr>
-          ))}
-          {products.length === 0 && (
-            <tr>
-              <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
-                暂无产品
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+    <div>
+      <h2>产品列表</h2>
+      <Table rowKey="id" dataSource={products} columns={columns} />
     </div>
   );
 }
-
-export default ProductList;
-

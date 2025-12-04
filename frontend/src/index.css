@@ -1,0 +1,9 @@
+/* 全局基础样式：可保持为空，也可加入以下内容 */
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    background: #f5f5f5;
+  }
+  

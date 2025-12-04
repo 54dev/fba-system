@@ -1,62 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import { fetchReviews } from '../api';
+import React, { useEffect, useState } from "react";
+import { Table, Tag, message } from "antd";
+import { fetchReviews } from "../api";
 
-function ReviewList() {
+export default function ReviewList() {
   const [reviews, setReviews] = useState([]);
-  const [error, setError] = useState('');
-
-  const load = async () => {
-    try {
-      const data = await fetchReviews();
-      setReviews(Array.isArray(data) ? data : data.data || []);
-    } catch (err) {
-      console.error(err);
-      setError('加载审核记录失败');
-    }
-  };
 
   useEffect(() => {
-    load();
+    fetchReviews()
+      .then(setReviews)
+      .catch(() => message.error("加载失败"));
   }, []);
 
+  const columns = [
+    { title: "产品ID", dataIndex: "product_id" },
+    { title: "审核人ID", dataIndex: "reviewer_id" },
+    {
+      title: "审核结果",
+      dataIndex: "result",
+      render: (r) =>
+        r === "approved" ? (
+          <Tag color="green">通过</Tag>
+        ) : (
+          <Tag color="red">拒绝</Tag>
+        ),
+    },
+    { title: "备注", dataIndex: "comment" },
+    { title: "时间", dataIndex: "created_at" },
+  ];
+
   return (
-    <div style={{ padding: '20px' }}>
+    <div>
       <h2>审核记录</h2>
-
-      {error && <div style={{ color: 'red', marginTop: '8px' }}>{error}</div>}
-
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px', fontSize: '14px' }}>
-        <thead>
-          <tr>
-            <th>日期</th>
-            <th>产品 ID</th>
-            <th>审核员</th>
-            <th>审核结果</th>
-            <th>备注</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reviews.map((r) => (
-            <tr key={r.id}>
-              <td>{r.created_at}</td>
-              <td>{r.product_id}</td>
-              <td>{r.reviewer?.name ?? '-'}</td>
-              <td>{r.result ?? r.review_result ?? '-'}</td>
-              <td style={{ maxWidth: '260px', whiteSpace: 'pre-wrap' }}>{r.comment ?? '-'}</td>
-            </tr>
-          ))}
-          {reviews.length === 0 && (
-            <tr>
-              <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>
-                暂无审核记录
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <Table rowKey="id" columns={columns} dataSource={reviews} />
     </div>
   );
 }
-
-export default ReviewList;
-

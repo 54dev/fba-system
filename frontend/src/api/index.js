@@ -32,6 +32,21 @@ export function login(email, password) {
   });
 }
 
+// ========== 退出登录 ==========
+export function logout() {
+  const token = localStorage.getItem("token");
+
+  return fetch(`${API_BASE}/logout`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }).finally(() => {
+    localStorage.removeItem("token");
+  });
+}
+
+
 // 获取当前用户
 export function fetchMe() {
   return request("/me");
