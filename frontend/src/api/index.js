@@ -1,13 +1,22 @@
-const API_BASE = "http://localhost/api";
+// ======================
+// API 基础路径
+// ======================
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost/api";
 
-// 统一封装请求
+
+// ======================
+// 通用请求封装
+// ======================
 async function request(url, options = {}) {
   const token = localStorage.getItem("token");
 
   const headers = options.headers || {};
+
+  // 若 body 不是 FormData，则自动加 JSON 头
   if (!(options.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
+
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
@@ -24,7 +33,10 @@ async function request(url, options = {}) {
   return res.json();
 }
 
+
+// ======================
 // 登录
+// ======================
 export function login(email, password) {
   return request("/login", {
     method: "POST",
@@ -32,37 +44,34 @@ export function login(email, password) {
   });
 }
 
-// ========== 退出登录 ==========
-export function logout() {
-  const token = localStorage.getItem("token");
 
-  return fetch(`${API_BASE}/logout`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }).finally(() => {
-    localStorage.removeItem("token");
-  });
-}
-
-
-// 获取当前用户
+// ======================
+// 获取当前登录用户
+// ======================
 export function fetchMe() {
   return request("/me");
 }
 
-// Dashboard 统计
+
+// ======================
+// Dashboard 统计信息
+// ======================
 export function fetchDashboardStats() {
   return request("/dashboard");
 }
 
-// 产品列表
+
+// ======================
+// 获取产品列表
+// ======================
 export function fetchProducts() {
   return request("/products");
 }
 
-// 添加产品（文件上传）
+
+// ======================
+// 创建新产品（含图片上传）
+// ======================
 export function createProduct(formData) {
   const token = localStorage.getItem("token");
 
@@ -78,7 +87,10 @@ export function createProduct(formData) {
   });
 }
 
-// 更新审核
+
+// ======================
+// 更新审核结果
+// ======================
 export function updateProductReview(productId, data) {
   return request(`/products/${productId}/review`, {
     method: "PUT",
@@ -86,25 +98,43 @@ export function updateProductReview(productId, data) {
   });
 }
 
+
+// ======================
 // 审核记录
+// ======================
 export function fetchReviews() {
   return request("/reviews");
 }
 
+
+// ======================
 // 登录日志
+// ======================
 export function fetchLoginLogs() {
   return request("/login-logs");
 }
 
-// 用户列表
+
+// ======================
+// 用户管理
+// ======================
 export function fetchUsers() {
   return request("/users");
 }
 
-// 创建用户
 export function createUser(data) {
   return request("/users", {
     method: "POST",
     body: JSON.stringify(data),
+  });
+}
+
+
+// ======================
+// 退出登录（新增）
+// ======================
+export function logout() {
+  return request("/logout", {
+    method: "POST",
   });
 }

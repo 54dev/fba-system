@@ -29,4 +29,10 @@ class AuthController extends Controller
             'token' => $token,
         ];
     }
+
+    public function logout(Request $request)
+    {
+        // 前端只需要删除 localStorage token，因此后端无需执行任何操作
+        return response()->json(['message' => 'Logged out']);
+    }
 }

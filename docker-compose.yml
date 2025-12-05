@@ -37,6 +37,8 @@ services:
       - "80:80"
     volumes:
       - ./backend/public:/var/www/html/public
+      # ⭐ 新增这一行：让软链接 storage 的目标目录在 nginx 容器里也存在
+      - ./backend/storage/app/public:/var/www/html/storage/app/public
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - backend

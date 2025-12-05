@@ -1,64 +1,50 @@
 import React, { useState } from "react";
+import { Card, Form, Input, Button, message } from "antd";
 import { login } from "../api";
 import { useNavigate } from "react-router-dom";
 
-const Login = () => {
+export default function Login() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const onFinish = async (values) => {
     try {
-      const res = await login(email, password);
+      setLoading(true);
+      const res = await login(values.email, values.password);
 
-      // 保存 token
       localStorage.setItem("token", res.token);
-
-      // 登录成功，跳转首页
+      message.success("登录成功！");
       navigate("/dashboard");
     } catch (err) {
-      console.error(err);
-      setError("账号或密码错误");
+      message.error("账号或密码错误");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: "400px", margin: "80px auto" }}>
-      <h2>登录</h2>
+    <div style={{ 
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      height: "100vh",
+      background: "#f0f2f5"
+    }}>
+      <Card title="登录系统" style={{ width: 350 }}>
+        <Form layout="vertical" onFinish={onFinish}>
+          <Form.Item name="email" label="邮箱" rules={[{ required: true }]}>
+            <Input placeholder="请输入邮箱" />
+          </Form.Item>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+          <Form.Item name="password" label="密码" rules={[{ required: true }]}>
+            <Input.Password placeholder="请输入密码" />
+          </Form.Item>
 
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>邮箱</label><br />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-
-        <div>
-          <label>密码</label><br />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-
-        <button type="submit" style={{ marginTop: "20px" }}>
-          登录
-        </button>
-      </form>
+          <Button type="primary" htmlType="submit" block loading={loading}>
+            登录
+          </Button>
+        </Form>
+      </Card>
     </div>
   );
-};
-
-export default Login;
+}

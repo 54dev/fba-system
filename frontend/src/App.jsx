@@ -1,15 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Link, useNavigate } from "react-router-dom";
-import { Layout, Menu } from "antd";
-import {
-  AppstoreOutlined,
-  UserOutlined,
-  LogoutOutlined,
-  FileAddOutlined,
-  UnorderedListOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-} from "@ant-design/icons";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -19,121 +9,68 @@ import ReviewList from "./pages/ReviewList";
 import LoginLog from "./pages/LoginLog";
 import UserPage from "./pages/UserPage";
 
-import { logout } from "./api";
-
-const { Header, Sider, Content } = Layout;
-
-function AppLayout({ children }) {
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/");
-  };
-
-  return (
-    <Layout style={{ minHeight: "100vh" }}>
-      <Sider>
-        <Menu theme="dark" mode="inline" defaultSelectedKeys={["dashboard"]}>
-          <Menu.Item key="dashboard" icon={<AppstoreOutlined />}>
-            <Link to="/dashboard">主页</Link>
-          </Menu.Item>
-
-          <Menu.Item key="products" icon={<UnorderedListOutlined />}>
-            <Link to="/products">产品列表</Link>
-          </Menu.Item>
-
-          <Menu.Item key="create" icon={<FileAddOutlined />}>
-            <Link to="/products/create">添加产品</Link>
-          </Menu.Item>
-
-          <Menu.Item key="reviews" icon={<CheckCircleOutlined />}>
-            <Link to="/reviews">审核记录</Link>
-          </Menu.Item>
-
-          <Menu.Item key="loginLogs" icon={<ClockCircleOutlined />}>
-            <Link to="/login-logs">登录日志</Link>
-          </Menu.Item>
-
-          <Menu.Item key="users" icon={<UserOutlined />}>
-            <Link to="/users">用户管理</Link>
-          </Menu.Item>
-
-          <Menu.Item
-            key="logout"
-            icon={<LogoutOutlined />}
-            style={{ marginTop: "40px" }}
-            onClick={handleLogout}
-          >
-            退出登录
-          </Menu.Item>
-        </Menu>
-      </Sider>
-
-      <Layout>
-        <Content style={{ padding: "20px" }}>{children}</Content>
-      </Layout>
-    </Layout>
-  );
-}
+import RequireAuth from "./components/RequireAuth";
+import Layout from "./components/Layout"; // 你的菜单布局组件
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* 登录页面 */}
         <Route path="/" element={<Login />} />
 
+        {/* 下面所有页面必须登录 */}
         <Route
           path="/dashboard"
           element={
-            <AppLayout>
-              <Dashboard />
-            </AppLayout>
+            <RequireAuth>
+              <Layout><Dashboard /></Layout>
+            </RequireAuth>
           }
         />
 
         <Route
           path="/products"
           element={
-            <AppLayout>
-              <ProductList />
-            </AppLayout>
+            <RequireAuth>
+              <Layout><ProductList /></Layout>
+            </RequireAuth>
           }
         />
 
         <Route
           path="/products/create"
           element={
-            <AppLayout>
-              <ProductCreate />
-            </AppLayout>
+            <RequireAuth>
+              <Layout><ProductCreate /></Layout>
+            </RequireAuth>
           }
         />
 
         <Route
           path="/reviews"
           element={
-            <AppLayout>
-              <ReviewList />
-            </AppLayout>
+            <RequireAuth>
+              <Layout><ReviewList /></Layout>
+            </RequireAuth>
           }
         />
 
         <Route
           path="/login-logs"
           element={
-            <AppLayout>
-              <LoginLog />
-            </AppLayout>
+            <RequireAuth>
+              <Layout><LoginLog /></Layout>
+            </RequireAuth>
           }
         />
 
         <Route
           path="/users"
           element={
-            <AppLayout>
-              <UserPage />
-            </AppLayout>
+            <RequireAuth>
+              <Layout><UserPage /></Layout>
+            </RequireAuth>
           }
         />
       </Routes>
