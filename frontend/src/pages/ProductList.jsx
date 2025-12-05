@@ -30,7 +30,7 @@ export default function ProductList() {
       title: "图片",
       dataIndex: "image_path",
       render: (path) => (
-        <Image width={80} src={`/storage/${path}`} />
+        <Image width={80} src={`http://localhost/storage/${path}`} />
       ),
     },
     {
