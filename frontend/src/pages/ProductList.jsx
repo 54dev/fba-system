@@ -68,23 +68,31 @@ export default function ProductList() {
     },
     {
       title: "操作",
-      render: (_, row) => (
-        <div>
-          <Button
-            type="primary"
-            onClick={() => handleReview(row.id, "approved")}
-            style={{ marginRight: 10 }}
-          >
-            通过
-          </Button>
-          <Button
-            danger
-            onClick={() => handleReview(row.id, "rejected")}
-          >
-            拒绝
-          </Button>
-        </div>
-      )
+      key: "action",
+      render: (_, record) => {
+        // 只有 reviewer 和 admin 显示操作按钮
+        if (user.role === "operator") {
+          return "无";
+        }
+    
+        return (
+          <>
+            <Button
+              type="primary"
+              style={{ marginRight: 8 }}
+              onClick={() => handleReview(record.id, "approved")}
+            >
+              通过
+            </Button>
+            <Button
+              danger
+              onClick={() => handleReview(record.id, "rejected")}
+            >
+              拒绝
+            </Button>
+          </>
+        );
+      }
     }
   ];
 

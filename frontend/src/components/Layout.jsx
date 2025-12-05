@@ -1,74 +1,79 @@
 import React from "react";
 import { Layout, Menu } from "antd";
-import {
-  DashboardOutlined,
-  UnorderedListOutlined,
-  PlusCircleOutlined,
-  FileSearchOutlined,
-  UserOutlined,
-  ClockCircleOutlined,
-} from '@ant-design/icons';
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { logout } from "../api";
 
-const { Sider, Header, Content } = Layout;
+const { Sider, Content } = Layout;
 
-export default function AppLayout({ children }) {
+export default function AppLayout({ user, children }) {
+  const navigate = useNavigate();
+
+  const menuItems = [];
+
+  // ★ 所有人都有
+  menuItems.push({
+    key: "dashboard",
+    label: "主页",
+    onClick: () => navigate("/dashboard"),
+  });
+
+  menuItems.push({
+    key: "products",
+    label: "产品列表",
+    onClick: () => navigate("/products"),
+  });
+
+  menuItems.push({
+    key: "products-create",
+    label: "添加产品",
+    onClick: () => navigate("/products/create"),
+  });
+
+  // ★ 审核员 + 管理员
+  if (user.role === "reviewer" || user.role === "admin") {
+    menuItems.push({
+      key: "reviews",
+      label: "审核记录",
+      onClick: () => navigate("/reviews"),
+    });
+  }
+
+  // ★ 只有管理员
+  if (user.role === "admin") {
+    menuItems.push({
+      key: "login-logs",
+      label: "登录日志",
+      onClick: () => navigate("/login-logs"),
+    });
+    menuItems.push({
+      key: "users",
+      label: "用户管理",
+      onClick: () => navigate("/users"),
+    });
+  }
+
+  // ★ 退出登陆永远显示
+  menuItems.push({
+    key: "logout",
+    label: "退出登录",
+    onClick: async () => {
+      try {
+        await logout();
+      } catch (e) {}
+
+      localStorage.removeItem("token");
+      navigate("/");
+    },
+  });
+
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sider theme="dark" collapsible>
-        <div style={{
-          height: 50,
-          margin: 16,
-          color: "#fff",
-          fontSize: 18,
-          textAlign: "center",
-          fontWeight: "bold"
-        }}>
-          FBA System
-        </div>
-
-        <Menu theme="dark" mode="inline">
-          <Menu.Item key="1" icon={<DashboardOutlined />}>
-            <Link to="/dashboard">主页</Link>
-          </Menu.Item>
-
-          <Menu.Item key="2" icon={<UnorderedListOutlined />}>
-            <Link to="/products">产品列表</Link>
-          </Menu.Item>
-
-          <Menu.Item key="3" icon={<PlusCircleOutlined />}>
-            <Link to="/products/create">添加产品</Link>
-          </Menu.Item>
-
-          <Menu.Item key="4" icon={<FileSearchOutlined />}>
-            <Link to="/reviews">审核记录</Link>
-          </Menu.Item>
-
-          <Menu.Item key="5" icon={<ClockCircleOutlined />}>
-            <Link to="/login-logs">登录日志</Link>
-          </Menu.Item>
-
-          <Menu.Item key="6" icon={<UserOutlined />}>
-            <Link to="/users">用户管理</Link>
-          </Menu.Item>
-        </Menu>
+      <Sider theme="light">
+        <Menu mode="inline" items={menuItems} />
       </Sider>
 
       <Layout>
-        <Header
-          style={{
-            background: "#fff",
-            paddingLeft: 20,
-            fontSize: 18,
-            fontWeight: "bold",
-          }}
-        >
-          FBA 内部管理系统
-        </Header>
-
-        <Content style={{ margin: 20, background: "#fff", padding: 20 }}>
-          {children}
-        </Content>
+        <Content style={{ padding: 20 }}>{children}</Content>
       </Layout>
     </Layout>
   );

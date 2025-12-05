@@ -1,48 +1,49 @@
 import React, { useState } from "react";
-import { Card, Form, Input, Button, message } from "antd";
 import { login } from "../api";
 import { useNavigate } from "react-router-dom";
+import { Card, Form, Input, Button, message } from "antd";
 
 export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  const onFinish = async (values) => {
+  const handleSubmit = async (values) => {
+    setLoading(true);
     try {
-      setLoading(true);
       const res = await login(values.email, values.password);
 
+      // 保存 token
       localStorage.setItem("token", res.token);
-      message.success("登录成功！");
-      navigate("/dashboard");
+
+      message.success("登录成功");
+
+      // 强制跳转到 dashboard
+      navigate("/dashboard", { replace: true });
+
     } catch (err) {
+      console.error(err);
       message.error("账号或密码错误");
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
-    <div style={{ 
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      height: "100vh",
-      background: "#f0f2f5"
-    }}>
-      <Card title="登录系统" style={{ width: 350 }}>
-        <Form layout="vertical" onFinish={onFinish}>
-          <Form.Item name="email" label="邮箱" rules={[{ required: true }]}>
-            <Input placeholder="请输入邮箱" />
+    <div style={{ display:"flex", height:"100vh", justifyContent:"center", alignItems:"center" }}>
+      <Card title="后台登录" style={{ width: 360 }}>
+        <Form onFinish={handleSubmit}>
+          <Form.Item name="email" rules={[{ required: true, message: "请输入邮箱" }]}>
+            <Input placeholder="Email" />
           </Form.Item>
 
-          <Form.Item name="password" label="密码" rules={[{ required: true }]}>
-            <Input.Password placeholder="请输入密码" />
+          <Form.Item name="password" rules={[{ required: true, message: "请输入密码" }]}>
+            <Input.Password placeholder="密码" />
           </Form.Item>
 
-          <Button type="primary" htmlType="submit" block loading={loading}>
-            登录
-          </Button>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" block loading={loading}>
+              登录
+            </Button>
+          </Form.Item>
         </Form>
       </Card>
     </div>
