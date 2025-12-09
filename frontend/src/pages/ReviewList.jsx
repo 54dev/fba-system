@@ -1,37 +1,45 @@
+// src/pages/ReviewList.jsx
 import React, { useEffect, useState } from "react";
-import { Table, Tag, message } from "antd";
+import { Table } from "antd";
 import { fetchReviews } from "../api";
+import { formatDateTimeCn } from "../utils/time";
+import { Link } from "react-router-dom";
 
 export default function ReviewList() {
   const [reviews, setReviews] = useState([]);
 
   useEffect(() => {
-    fetchReviews()
-      .then(setReviews)
-      .catch(() => message.error("加载失败"));
+    fetchReviews().then((res) => setReviews(res));
   }, []);
 
   const columns = [
-    { title: "产品ID", dataIndex: "product_id" },
-    { title: "审核人ID", dataIndex: "reviewer_id" },
+    {
+      title: "产品 ID",
+      render: (_, r) => <Link to={`/products/${r.product_id}`}>{r.product_id}</Link>,
+    },
+    {
+      title: "审核员",
+      render: (_, r) =>
+        r.user ? <Link to={`/users/${r.user.id}`}>{r.user.name}</Link> : "未知",
+    },
     {
       title: "审核结果",
       dataIndex: "result",
-      render: (r) =>
-        r === "approved" ? (
-          <Tag color="green">通过</Tag>
-        ) : (
-          <Tag color="red">拒绝</Tag>
-        ),
     },
-    { title: "备注", dataIndex: "comment" },
-    { title: "时间", dataIndex: "created_at" },
+    {
+      title: "备注",
+      dataIndex: "comment",
+    },
+    {
+      title: "时间",
+      render: (_, r) => formatDateTimeCn(r.created_at),
+    },
   ];
 
   return (
     <div>
       <h2>审核记录</h2>
-      <Table rowKey="id" columns={columns} dataSource={reviews} />
+      <Table rowKey="id" dataSource={reviews} columns={columns} />
     </div>
   );
 }

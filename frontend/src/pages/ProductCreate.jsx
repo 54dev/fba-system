@@ -1,33 +1,36 @@
+// src/pages/ProductCreate.jsx
 import React, { useState } from "react";
-import { Form, Input, Button, Upload, message } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
 import { createProduct } from "../api";
 import { useNavigate } from "react-router-dom";
+import { message } from "antd";
 
 export default function ProductCreate() {
   const navigate = useNavigate();
-  const [file, setFile] = useState(null);
 
-  const onFinish = async (values) => {
-    if (!file) {
-      message.error("请上传产品图片");
-      return;
-    }
+  const [image, setImage] = useState(null);
+  const [link1, setLink1] = useState("");
+  const [link2, setLink2] = useState("");
+  const [link3, setLink3] = useState("");
+  const [reason, setReason] = useState("");
+  const [diff, setDiff] = useState("");
 
-    const formData = new FormData();
-    formData.append("image", file);
-    formData.append("reference_link_1", values.reference_link_1);
-    if (values.reference_link_2) formData.append("reference_link_2", values.reference_link_2);
-    if (values.reference_link_3) formData.append("reference_link_3", values.reference_link_3);
-    formData.append("reason", values.reason);
-    formData.append("differentiation", values.differentiation);
-
+  const submit = async () => {
     try {
-      await createProduct(formData);
+      const fd = new FormData();
+      fd.append("image", image);
+      fd.append("reference_link_1", link1);
+      fd.append("reference_link_2", link2);
+      fd.append("reference_link_3", link3);
+      fd.append("reason", reason);
+      fd.append("differentiation", diff);
+
+      await createProduct(fd);
+
       message.success("提交成功");
       navigate("/products");
-    } catch (err) {
-      message.error("提交失败");
+    } catch (e) {
+      const readable = e.response?.data?.message || e.message || "未知错误";
+      message.error("提交失败：" + readable);
     }
   };
 
@@ -35,55 +38,25 @@ export default function ProductCreate() {
     <div>
       <h2>添加产品</h2>
 
-      <Form layout="vertical" onFinish={onFinish}>
-        <Form.Item label="产品图片">
-          <Upload
-            beforeUpload={(file) => {
-              setFile(file);
-              return false;
-            }}
-            maxCount={1}
-          >
-            <Button icon={<UploadOutlined />}>上传图片</Button>
-          </Upload>
-        </Form.Item>
+      <p>图片：</p>
+      <input type="file" onChange={(e) => setImage(e.target.files[0])} />
 
-        <Form.Item
-          label="参考链接 1"
-          name="reference_link_1"
-          rules={[{ required: true, message: "请输入参考链接 1" }]}
-        >
-          <Input />
-        </Form.Item>
+      <p>参考链接 1</p>
+      <input value={link1} onChange={(e) => setLink1(e.target.value)} />
 
-        <Form.Item label="参考链接 2" name="reference_link_2">
-          <Input />
-        </Form.Item>
+      <p>参考链接 2</p>
+      <input value={link2} onChange={(e) => setLink2(e.target.value)} />
 
-        <Form.Item label="参考链接 3" name="reference_link_3">
-          <Input />
-        </Form.Item>
+      <p>参考链接 3</p>
+      <input value={link3} onChange={(e) => setLink3(e.target.value)} />
 
-        <Form.Item
-          label="开发理由"
-          name="reason"
-          rules={[{ required: true, message: "请输入开发理由" }]}
-        >
-          <Input.TextArea rows={3} />
-        </Form.Item>
+      <p>开发理由</p>
+      <textarea value={reason} onChange={(e) => setReason(e.target.value)} />
 
-        <Form.Item
-          label="差异化（定价/配置）"
-          name="differentiation"
-          rules={[{ required: true, message: "请输入差异化信息" }]}
-        >
-          <Input.TextArea rows={3} />
-        </Form.Item>
+      <p>差异化</p>
+      <textarea value={diff} onChange={(e) => setDiff(e.target.value)} />
 
-        <Button type="primary" htmlType="submit">
-          提交
-        </Button>
-      </Form>
+      <button onClick={submit}>提交</button>
     </div>
   );
 }

@@ -7,9 +7,7 @@ use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\LoginLogController;
 use App\Http\Controllers\UserController;
 
-// Sanctum 中间件别名会在 app.php 中注册
-// 这里无需 use App\Http\Middleware\RoleMiddleware;
-
+// 登录
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -20,15 +18,18 @@ Route::middleware('auth:sanctum')->group(function () {
     // Dashboard
     Route::get('/dashboard', [ProductController::class, 'dashboard']);
 
-    // 产品：列表 + 新建
+    // 产品管理
     Route::get('/products', [ProductController::class, 'index']);
     Route::post('/products', [ProductController::class, 'store']);
 
-    // 审核产品（只有审核员 / 管理员）
+    // 产品详情（你新需求必备）
+    Route::get('/products/{id}', [ProductController::class, 'show']);
+
+    // 审核产品
     Route::put('/products/{product}/review', [ProductController::class, 'updateReview'])
         ->middleware('role:admin,reviewer');
 
-    // 审核记录（审核员 + 管理员）
+    // 审核记录
     Route::get('/reviews', [ProductReviewController::class, 'index'])
         ->middleware('role:admin,reviewer');
 
@@ -36,10 +37,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/login-logs', [LoginLogController::class, 'index'])
         ->middleware('role:admin');
 
-    // 用户管理（只有管理员）
+    // 用户管理（管理员）
     Route::get('/users', [UserController::class, 'index'])
         ->middleware('role:admin');
-
     Route::post('/users', [UserController::class, 'store'])
+        ->middleware('role:admin');
+
+    // 用户详情（管理员、审核员都能看）
+    Route::get('/users/{id}', [UserController::class, 'show']);
+
+    // 用户更新（仅管理员）
+    Route::put('/users/{id}', [UserController::class, 'update'])
         ->middleware('role:admin');
 });
