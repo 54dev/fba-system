@@ -1,80 +1,108 @@
 // src/pages/ProductList.jsx
+
 import React, { useEffect, useState } from "react";
+import { Table, Tag, Space, Button, Modal, message, Image } from "antd";
 import { useNavigate } from "react-router-dom";
-import { Table, Tag, Space, Button, Image, message } from "antd";
-import {
-  fetchProducts,
-  updateProductReview,
-  formatDateTimeCn,
-} from "../api";
+import { fetchProducts, updateProductReview } from "../api";
+import { formatDateTimeCn } from "../utils/time";
+
+const { confirm } = Modal;
 
 export default function ProductList({ user }) {
-  const [loading, setLoading] = useState(false);
-  const [products, setProducts] = useState([]);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const loadData = async () => {
+  const role = user?.role || "operator";
+
+  const load = () => {
     setLoading(true);
-    try {
-      const res = await fetchProducts();
-      setProducts(Array.isArray(res) ? res : res.data || []);
-    } catch (e) {
-      console.error(e);
-      message.error(e.message || "加载产品列表失败");
-    } finally {
-      setLoading(false);
-    }
+    fetchProducts()
+      .then((res) => setData(res || []))
+      .catch((err) => {
+        console.error(err);
+        message.error("加载产品列表失败");
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    loadData();
+    load();
   }, []);
 
-  const handleReview = async (record, result) => {
-    const actionText = result === "approved" ? "通过" : "拒绝";
-    const comment =
-      window.prompt(`请输入【${actionText}】备注（可选）：`, "") || "";
+  const showReviewConfirm = (record, result) => {
+    let title = result === "approved" ? "确认通过该产品？" : "确认拒绝该产品？";
 
-    try {
-      await updateProductReview(record.id, { result, comment });
-      message.success(`已${actionText}`);
-      loadData();
-    } catch (e) {
-      console.error(e);
-      message.error(e.message || `${actionText}失败`);
-    }
+    let commentValue = "";
+
+    confirm({
+      title,
+      content: (
+        <textarea
+          style={{ width: "100%", minHeight: 80 }}
+          placeholder="可选：填写审核意见"
+          onChange={(e) => {
+            commentValue = e.target.value;
+          }}
+        />
+      ),
+      okText: "确认",
+      cancelText: "取消",
+      async onOk() {
+        try {
+          await updateProductReview(record.id, {
+            result,
+            comment: commentValue,
+          });
+          message.success("审核结果已更新");
+          load();
+        } catch (err) {
+          console.error(err);
+          message.error(err.message || "审核失败");
+        }
+      },
+    });
   };
-
-  const getImageUrl = (record) =>
-    record.image_url || record.imageUrl || record.image_path || record.imagePath;
 
   const columns = [
     {
-      title: "产品 ID",
+      title: "ID",
       dataIndex: "id",
-      width: 80,
-      render: (id, record) => (
-        <a onClick={() => navigate(`/products/${record.id}`)}>{id}</a>
+      width: 60,
+      render: (id) => (
+        <Button
+          type="link"
+          onClick={() => navigate(`/products/${id}`)}
+        >
+          {id}
+        </Button>
       ),
     },
     {
       title: "图片",
-      dataIndex: "image",
-      width: 110,
+      dataIndex: "image_url",
+      width: 120,
       render: (_, record) => {
-        const url = getImageUrl(record);
+        const url = record.image_url || record.image_path_url;
         if (!url) return "-";
-        return <Image width={90} src={url} />;
+        return (
+          <Image
+            src={url}
+            width={80}
+            style={{ objectFit: "cover" }}
+            onClick={() => navigate(`/products/${record.id}`)}
+          />
+        );
       },
     },
     {
       title: "提交人",
-      dataIndex: ["user", "name"],
-      render: (_, record) => record.user?.name || "-",
+      dataIndex: "user",
+      render: (user) => user?.name || "-",
     },
     {
       title: "参考链接",
-      key: "links",
+      dataIndex: "reference_link_1",
       render: (_, record) => {
         const links = [
           record.reference_link_1,
@@ -85,35 +113,15 @@ export default function ProductList({ user }) {
         if (links.length === 0) return "-";
 
         return (
-          <Space direction="vertical">
-            {record.reference_link_1 && (
-              <a
-                href={record.reference_link_1}
-                target="_blank"
-                rel="noreferrer"
-              >
-                参考链接 1
-              </a>
-            )}
-            {record.reference_link_2 && (
-              <a
-                href={record.reference_link_2}
-                target="_blank"
-                rel="noreferrer"
-              >
-                参考链接 2
-              </a>
-            )}
-            {record.reference_link_3 && (
-              <a
-                href={record.reference_link_3}
-                target="_blank"
-                rel="noreferrer"
-              >
-                参考链接 3
-              </a>
-            )}
-          </Space>
+          <div>
+            {links.map((url, idx) => (
+              <div key={idx}>
+                <a href={url} target="_blank" rel="noreferrer">
+                  链接 {idx + 1}
+                </a>
+              </div>
+            ))}
+          </div>
         );
       },
     },
@@ -128,7 +136,7 @@ export default function ProductList({ user }) {
       ellipsis: true,
     },
     {
-      title: "状态",
+      title: "审核状态",
       dataIndex: "review_result",
       width: 100,
       render: (value) => {
@@ -145,57 +153,69 @@ export default function ProductList({ user }) {
       },
     },
     {
-      title: "创建时间",
-      dataIndex: "created_at",
-      width: 180,
-      render: (val) => formatDateTimeCn(val),
+      title: "更新时间",
+      dataIndex: "updated_at",
+      render: (value) => formatDateTimeCn(value),
     },
     {
       title: "操作",
-      key: "action",
-      width: 180,
+      key: "actions",
+      width: 220,
       render: (_, record) => {
-        // 只有 管理员 & 审核员 才能看到审核按钮
-        if (!user || (user.role !== "admin" && user.role !== "reviewer")) {
-          return "-";
-        }
+        const actions = [];
 
-        const disabled = record.review_result === "approved";
-
-        return (
-          <Space>
+        // 管理员 / 审核员：审核按钮
+        if (role === "admin" || role === "reviewer") {
+          actions.push(
             <Button
-              size="small"
-              type="primary"
-              disabled={disabled}
-              onClick={() => handleReview(record, "approved")}
+              key="approve"
+              type="link"
+              onClick={() => showReviewConfirm(record, "approved")}
             >
               通过
-            </Button>
+            </Button>,
             <Button
-              size="small"
+              key="reject"
+              type="link"
               danger
-              disabled={disabled}
-              onClick={() => handleReview(record, "rejected")}
+              onClick={() => showReviewConfirm(record, "rejected")}
             >
               拒绝
             </Button>
-          </Space>
-        );
+          );
+        }
+
+        // 操作员：在待审核 / 已拒绝时可以编辑
+        if (
+          role === "operator" &&
+          (record.review_result === "pending" ||
+            record.review_result === "rejected")
+        ) {
+          actions.push(
+            <Button
+              key="edit"
+              type="link"
+              onClick={() => navigate(`/products/${record.id}/edit`)}
+            >
+              编辑
+            </Button>
+          );
+        }
+
+        return <Space>{actions}</Space>;
       },
     },
   ];
 
   return (
-    <div>
-      <h2 style={{ marginBottom: 16 }}>产品列表</h2>
+    <>
+      <h2>产品列表</h2>
       <Table
         rowKey="id"
         loading={loading}
+        dataSource={data}
         columns={columns}
-        dataSource={products}
-        pagination={{ pageSize: 10 }}
       />
-    </div>
+    </>
   );
 }

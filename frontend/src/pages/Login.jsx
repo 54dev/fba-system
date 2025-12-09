@@ -1,24 +1,33 @@
+// src/pages/Login.jsx
+
 import React, { useState } from "react";
-import { Card, Form, Input, Button, Typography, message } from "antd";
-import { login as loginApi } from "../api";
+import { Button, Card, Form, Input, Typography, Alert } from "antd";
+import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+import { login } from "../api";
 
 const { Title } = Typography;
 
 export default function Login({ onLogin }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleFinish = async (values) => {
+    setError("");
     setLoading(true);
     try {
-      const res = await loginApi(values.email, values.password);
-      if (!res || !res.token || !res.user) {
-        throw new Error("登录响应格式不正确");
+      const res = await login(values.email, values.password);
+      if (res?.token) {
+        localStorage.setItem("token", res.token);
       }
-      message.success("登录成功");
-      onLogin(res.user, res.token);
+      if (res?.user) {
+        onLogin?.(res.user);
+      }
+      navigate("/dashboard");
     } catch (err) {
       console.error(err);
-      message.error("登录失败，请检查账号或密码");
+      setError(err.message || "登录失败，请检查账号或密码");
     } finally {
       setLoading(false);
     }
@@ -34,22 +43,33 @@ export default function Login({ onLogin }) {
         background: "#f0f2f5",
       }}
     >
-      <Card style={{ width: 360, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+      <Card style={{ width: 380 }}>
         <Title level={3} style={{ textAlign: "center", marginBottom: 24 }}>
-          FBA 系统登录
+          FBA 管理系统登录
         </Title>
 
-        <Form
-          layout="vertical"
-          onFinish={handleFinish}
-          initialValues={{ email: "admin@example.com", password: "password" }}
-        >
+        {error && (
+          <Alert
+            type="error"
+            message={error}
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        )}
+
+        <Form layout="vertical" onFinish={handleFinish}>
           <Form.Item
             label="邮箱"
             name="email"
-            rules={[{ required: true, message: "请输入邮箱" }]}
+            rules={[
+              { required: true, message: "请输入邮箱" },
+              { type: "email", message: "邮箱格式不正确" },
+            ]}
           >
-            <Input placeholder="admin@example.com" />
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="admin@example.com"
+            />
           </Form.Item>
 
           <Form.Item
@@ -57,11 +77,19 @@ export default function Login({ onLogin }) {
             name="password"
             rules={[{ required: true, message: "请输入密码" }]}
           >
-            <Input.Password />
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="请输入密码"
+            />
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              block
+              loading={loading}
+            >
               登录
             </Button>
           </Form.Item>

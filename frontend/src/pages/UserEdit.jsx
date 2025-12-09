@@ -1,62 +1,49 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
 import { Card, Form, Input, Select, Button, message } from "antd";
 import { fetchUserDetail, updateUser } from "../api";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function UserEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const [form] = Form.useForm();
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadUser();
-  }, []);
+    fetchUserDetail(id)
+      .then((res) => {
+        form.setFieldsValue({
+          name: res.name,
+          email: res.email,
+          role: res.role
+        });
+      })
+      .finally(() => setLoading(false));
+  }, [id]);
 
-  const loadUser = async () => {
-    try {
-      const data = await fetchUserDetail(id);
-      form.setFieldsValue({
-        name: data.name,
-        email: data.email,
-        role: data.role,
-      });
-    } catch (err) {
-      console.error(err);
-      message.error("加载用户信息失败");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onFinish = async (values) => {
+  const onSubmit = async (values) => {
     try {
       await updateUser(id, values);
-      message.success("用户信息已更新");
-      navigate("/users");
+      message.success("用户更新成功");
+      navigate(`/users/${id}`);
     } catch (err) {
-      console.error(err);
-      message.error("保存失败，请检查输入");
+      message.error(err.message);
     }
   };
 
   return (
-    <Card title="编辑用户">
-      <Form form={form} layout="vertical" onFinish={onFinish}>
-        <Form.Item label="姓名" name="name" rules={[{ required: true }]}>
-          <Input placeholder="请输入姓名" />
+    <Card title="编辑用户" loading={loading}>
+      <Form form={form} layout="vertical" onFinish={onSubmit}>
+        <Form.Item name="name" label="用户名" rules={[{ required: true }]}>
+          <Input placeholder="请输入用户名" />
         </Form.Item>
 
-        <Form.Item
-          label="邮箱"
-          name="email"
-          rules={[{ required: true, type: "email" }]}
-        >
+        <Form.Item name="email" label="邮箱" rules={[{ required: true }]}>
           <Input placeholder="请输入邮箱" />
         </Form.Item>
 
-        <Form.Item label="角色" name="role" rules={[{ required: true }]}>
+        <Form.Item name="role" label="角色" rules={[{ required: true }]}>
           <Select>
             <Select.Option value="admin">管理员</Select.Option>
             <Select.Option value="reviewer">审核员</Select.Option>
@@ -68,12 +55,8 @@ export default function UserEdit() {
           <Button type="primary" htmlType="submit">
             保存
           </Button>
-
-          <Button
-            style={{ marginLeft: 10 }}
-            onClick={() => navigate("/users")}
-          >
-            取消
+          <Button style={{ marginLeft: 10 }} onClick={() => navigate(-1)}>
+            返回
           </Button>
         </Form.Item>
       </Form>

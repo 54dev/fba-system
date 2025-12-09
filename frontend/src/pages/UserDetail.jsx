@@ -1,58 +1,30 @@
-// src/pages/UserDetail.jsx
 import React, { useEffect, useState } from "react";
-import { getUserDetail, updateUser } from "../api";
-import { useParams } from "react-router-dom";
-import { Form, Input, Select, Button, message } from "antd";
+import { Card, Descriptions, Button } from "antd";
+import { fetchUserDetail } from "../api";
+import { useParams, useNavigate } from "react-router-dom";
 
 export default function UserDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [form] = Form.useForm();
 
   useEffect(() => {
-    getUserDetail(id).then((res) => {
-      setUser(res);
-      form.setFieldsValue(res);
-    });
+    fetchUserDetail(id).then((res) => setUser(res));
   }, [id]);
 
-  if (!user) return <p>加载中...</p>;
-
-  const save = async () => {
-    try {
-      const values = form.getFieldsValue();
-      await updateUser(id, values);
-      message.success("保存成功");
-    } catch (err) {
-      message.error("保存失败：" + err.message);
-    }
-  };
+  if (!user) return <Card loading />;
 
   return (
-    <div>
-      <h2>用户详情 #{id}</h2>
-
-      <Form form={form} layout="vertical">
-        <Form.Item label="名称" name="name">
-          <Input />
-        </Form.Item>
-
-        <Form.Item label="邮箱" name="email">
-          <Input />
-        </Form.Item>
-
-        <Form.Item label="角色" name="role">
-          <Select>
-            <Select.Option value="operator">操作员</Select.Option>
-            <Select.Option value="reviewer">审核员</Select.Option>
-            <Select.Option value="admin">管理员</Select.Option>
-          </Select>
-        </Form.Item>
-
-        <Button type="primary" onClick={save}>
-          保存
-        </Button>
-      </Form>
-    </div>
+    <Card
+      title="用户详情"
+      extra={<Button onClick={() => navigate(`/users/${id}/edit`)}>编辑</Button>}
+    >
+      <Descriptions bordered column={1}>
+        <Descriptions.Item label="用户 ID">{user.id}</Descriptions.Item>
+        <Descriptions.Item label="用户名">{user.name}</Descriptions.Item>
+        <Descriptions.Item label="邮箱">{user.email}</Descriptions.Item>
+        <Descriptions.Item label="角色">{user.role}</Descriptions.Item>
+      </Descriptions>
+    </Card>
   );
 }

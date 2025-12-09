@@ -1,61 +1,80 @@
+// src/pages/Dashboard.jsx
+
 import React, { useEffect, useState } from "react";
-import { Card, Row, Col, Statistic, message } from "antd";
+import { Card, Col, Row, Statistic, Spin, message } from "antd";
 import { fetchDashboardStats } from "../api";
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboardStats()
-      .then((res) => setStats(res))
-      .catch(() => message.error("加载统计数据失败"));
+      .then((data) => setStats(data))
+      .catch((err) => {
+        console.error(err);
+        message.error("加载统计信息失败");
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  if (!stats) return <p>加载中...</p>;
+  if (loading) {
+    return <Spin tip="加载中..." />;
+  }
 
   return (
-    <div>
-      <h2>主页统计</h2>
+    <Row gutter={16}>
+      <Col span={6}>
+        <Card>
+          <Statistic
+            title="产品总数"
+            value={stats?.total_products || 0}
+          />
+        </Card>
+      </Col>
+      <Col span={6}>
+        <Card>
+          <Statistic
+            title="已通过"
+            value={stats?.approved_products || 0}
+            valueStyle={{ color: "#3f8600" }}
+          />
+        </Card>
+      </Col>
+      <Col span={6}>
+        <Card>
+          <Statistic
+            title="已拒绝"
+            value={stats?.rejected_products || 0}
+            valueStyle={{ color: "#cf1322" }}
+          />
+        </Card>
+      </Col>
+      <Col span={6}>
+        <Card>
+          <Statistic
+            title="待审核"
+            value={stats?.pending_products || 0}
+          />
+        </Card>
+      </Col>
 
-      <Row gutter={16}>
-        <Col span={6}>
-          <Card>
-            <Statistic title="总产品数" value={stats.total_products} />
-          </Card>
-        </Col>
-
-        <Col span={6}>
-          <Card>
-            <Statistic title="待审核" value={stats.pending_products} />
-          </Card>
-        </Col>
-
-        <Col span={6}>
-          <Card>
-            <Statistic title="已通过" value={stats.approved_products} />
-          </Card>
-        </Col>
-
-        <Col span={6}>
-          <Card>
-            <Statistic title="已拒绝" value={stats.rejected_products} />
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={16} style={{ marginTop: 20 }}>
-        <Col span={6}>
-          <Card>
-            <Statistic title="操作员数量" value={stats.operators} />
-          </Card>
-        </Col>
-
-        <Col span={6}>
-          <Card>
-            <Statistic title="审核员数量" value={stats.reviewers} />
-          </Card>
-        </Col>
-      </Row>
-    </div>
+      <Col span={6} style={{ marginTop: 16 }}>
+        <Card>
+          <Statistic
+            title="操作员数量"
+            value={stats?.operators || 0}
+          />
+        </Card>
+      </Col>
+      <Col span={6} style={{ marginTop: 16 }}>
+        <Card>
+          <Statistic
+            title="审核员数量"
+            value={stats?.reviewers || 0}
+          />
+        </Card>
+      </Col>
+    </Row>
   );
 }
