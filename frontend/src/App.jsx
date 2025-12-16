@@ -1,42 +1,35 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import * as api from "./api"; // ✅ 必须使用 * as api
+
+import AppLayout from "./components/Layout";
+import RequireAuth from "./components/RequireAuth";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ProductList from "./pages/ProductList";
 import ProductCreate from "./pages/ProductCreate";
+import ProductDetail from "./pages/ProductDetail";
 import ReviewList from "./pages/ReviewList";
 import LoginLog from "./pages/LoginLog";
 import UserPage from "./pages/UserPage";
 import UserDetail from "./pages/UserDetail";
 import UserEdit from "./pages/UserEdit";
-import ProductDetail from "./pages/ProductDetail";
-
-import AppLayout from "./components/Layout";
-import { fetchMe } from "./api";
-
-function ProtectedRoute({ user, loading, children }) {
-  if (loading) {
-    return <div style={{ padding: 40 }}>加载中...</div>;
-  }
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-  return children;
-}
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true); // 👈 新增
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setAuthLoading(false);
+      setLoading(false);
       return;
     }
 
-    fetchMe()
+    api
+      .me()
       .then((res) => {
         setUser(res.user);
       })
@@ -44,58 +37,63 @@ export default function App() {
         localStorage.removeItem("token");
       })
       .finally(() => {
-        setAuthLoading(false); // 👈 必须：等 fetchMe 结束后才允许页面渲染
+        setLoading(false);
       });
   }, []);
+
+  if (loading) return null;
 
   return (
     <BrowserRouter>
       <Routes>
+        {/* 登录页 */}
         <Route path="/" element={<Login onLogin={setUser} />} />
 
-        {/* Dashboard */}
+        {/* 仪表盘 */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute user={user} loading={authLoading}>
+            <RequireAuth user={user}>
               <AppLayout user={user}>
-                <Dashboard />
+                <Dashboard user={user} />
               </AppLayout>
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
 
-        {/* 产品相关 */}
+        {/* 产品列表 */}
         <Route
           path="/products"
           element={
-            <ProtectedRoute user={user} loading={authLoading}>
+            <RequireAuth user={user}>
               <AppLayout user={user}>
                 <ProductList user={user} />
               </AppLayout>
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
 
+        {/* 新建产品 */}
         <Route
           path="/products/create"
           element={
-            <ProtectedRoute user={user} loading={authLoading}>
+            <RequireAuth user={user}>
               <AppLayout user={user}>
-                <ProductCreate />
+                <ProductCreate user={user} />
               </AppLayout>
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
 
+        {/* 产品详情 */}
         <Route
           path="/products/:id"
           element={
-            <ProtectedRoute user={user} loading={authLoading}>
+            <RequireAuth user={user}>
               <AppLayout user={user}>
-                <ProductDetail />
+                <ProductDetail user={user} />
               </AppLayout>
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
 
@@ -103,23 +101,23 @@ export default function App() {
         <Route
           path="/reviews"
           element={
-            <ProtectedRoute user={user} loading={authLoading}>
+            <RequireAuth user={user}>
               <AppLayout user={user}>
-                <ReviewList />
+                <ReviewList user={user} />
               </AppLayout>
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
 
-        {/* 登录日志（管理员） */}
+        {/* 登录日志 */}
         <Route
           path="/login-logs"
           element={
-            <ProtectedRoute user={user} loading={authLoading}>
+            <RequireAuth user={user}>
               <AppLayout user={user}>
                 <LoginLog />
               </AppLayout>
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
 
@@ -127,33 +125,35 @@ export default function App() {
         <Route
           path="/users"
           element={
-            <ProtectedRoute user={user} loading={authLoading}>
+            <RequireAuth user={user}>
               <AppLayout user={user}>
                 <UserPage />
               </AppLayout>
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
 
+        {/* 用户详情 */}
         <Route
           path="/users/:id"
           element={
-            <ProtectedRoute user={user} loading={authLoading}>
+            <RequireAuth user={user}>
               <AppLayout user={user}>
                 <UserDetail />
               </AppLayout>
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
 
+        {/* 用户编辑 */}
         <Route
           path="/users/:id/edit"
           element={
-            <ProtectedRoute user={user} loading={authLoading}>
+            <RequireAuth user={user}>
               <AppLayout user={user}>
                 <UserEdit />
               </AppLayout>
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
       </Routes>

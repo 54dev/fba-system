@@ -1,80 +1,121 @@
-// src/pages/Dashboard.jsx
-
+// frontend/src/pages/Dashboard.jsx
 import React, { useEffect, useState } from "react";
-import { Card, Col, Row, Statistic, Spin, message } from "antd";
-import { fetchDashboardStats } from "../api";
+import { Row, Col, Card, Statistic, message } from "antd";
+import { fetchDashboard } from "../api";
 
-export default function Dashboard() {
+const Dashboard = ({ user }) => {
+  const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardStats()
+    setLoading(true);
+    fetchDashboard()
       .then((data) => setStats(data))
-      .catch((err) => {
-        console.error(err);
+      .catch((e) => {
+        console.error(e);
         message.error("加载统计信息失败");
       })
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return <Spin tip="加载中..." />;
+  const role = user?.role;
+
+  if (!stats) {
+    return (
+      <Card loading={loading}>
+        <p>加载中...</p>
+      </Card>
+    );
+  }
+
+  const cards = [];
+
+  if (role === "admin" || role === "reviewer") {
+    cards.push(
+      {
+        key: "total_products",
+        title: "产品总数",
+        value: stats.total_products || 0,
+      },
+      {
+        key: "approved_products",
+        title: "已通过",
+        value: stats.approved_products || 0,
+      },
+      {
+        key: "rejected_products",
+        title: "已拒绝",
+        value: stats.rejected_products || 0,
+      },
+      {
+        key: "pending_products",
+        title: "待审核",
+        value: stats.pending_products || 0,
+      }
+    );
+  }
+
+  if (role === "operator") {
+    cards.push(
+      {
+        key: "my_total",
+        title: "我提交的产品总数",
+        value: stats.my_total_products || 0,
+      },
+      {
+        key: "my_approved",
+        title: "我提交的已通过",
+        value: stats.my_approved_products || 0,
+      },
+      {
+        key: "my_rejected",
+        title: "我提交的已拒绝",
+        value: stats.my_rejected_products || 0,
+      },
+      {
+        key: "my_pending",
+        title: "我提交的待审核",
+        value: stats.my_pending_products || 0,
+      }
+    );
+  }
+
+  if (role === "admin") {
+    cards.push(
+      {
+        key: "operators",
+        title: "操作员数量",
+        value: stats.operators || 0,
+      },
+      {
+        key: "reviewers",
+        title: "审核员数量",
+        value: stats.reviewers || 0,
+      }
+    );
+  }
+
+  if (role === "reviewer") {
+    cards.push({
+      key: "operators",
+      title: "操作员数量",
+      value: stats.operators || 0,
+    });
   }
 
   return (
-    <Row gutter={16}>
-      <Col span={6}>
-        <Card>
-          <Statistic
-            title="产品总数"
-            value={stats?.total_products || 0}
-          />
-        </Card>
-      </Col>
-      <Col span={6}>
-        <Card>
-          <Statistic
-            title="已通过"
-            value={stats?.approved_products || 0}
-            valueStyle={{ color: "#3f8600" }}
-          />
-        </Card>
-      </Col>
-      <Col span={6}>
-        <Card>
-          <Statistic
-            title="已拒绝"
-            value={stats?.rejected_products || 0}
-            valueStyle={{ color: "#cf1322" }}
-          />
-        </Card>
-      </Col>
-      <Col span={6}>
-        <Card>
-          <Statistic
-            title="待审核"
-            value={stats?.pending_products || 0}
-          />
-        </Card>
-      </Col>
-
-      <Col span={6} style={{ marginTop: 16 }}>
-        <Card>
-          <Statistic
-            title="操作员数量"
-            value={stats?.operators || 0}
-          />
-        </Card>
-      </Col>
-      <Col span={6} style={{ marginTop: 16 }}>
-        <Card>
-          <Statistic
-            title="审核员数量"
-            value={stats?.reviewers || 0}
-          />
-        </Card>
-      </Col>
-    </Row>
+    <div>
+      <Row gutter={[16, 16]}>
+        {cards.map((item) => (
+          <Col key={item.key} xs={12} md={6}>
+            <Card>
+              <Statistic title={item.title} value={item.value} />
+            </Card>
+          </Col>
+        ))}
+      </Row>
+    </div>
   );
-}
+};
+
+export default Dashboard;

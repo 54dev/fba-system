@@ -1,114 +1,98 @@
-// src/components/Layout.jsx
-
+// frontend/src/components/Layout.jsx
 import React from "react";
-import { Layout, Menu } from "antd";
+import { Layout, Menu, Typography, Button } from "antd";
 import {
   DashboardOutlined,
-  UnorderedListOutlined,
+  ShoppingOutlined,
   PlusOutlined,
-  AuditOutlined,
-  HistoryOutlined,
-  UserOutlined,
+  FileSearchOutlined,
+  ClockCircleOutlined,
+  TeamOutlined,
   LogoutOutlined,
 } from "@ant-design/icons";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 const { Header, Sider, Content } = Layout;
+const { Title, Text } = Typography;
 
-export default function AppLayout({ user, onLogout, children }) {
-  const navigate = useNavigate();
+const AppLayout = ({ user, onLogout, children }) => {
   const location = useLocation();
+  const role = user?.role;
 
-  const role = user?.role || "operator";
+  const items = [];
 
-  const menuItems = [];
-
-  // 所有人都有：Dashboard + 产品列表
-  menuItems.push(
-    {
-      key: "/dashboard",
-      icon: <DashboardOutlined />,
-      label: "主页",
-    },
-    {
-      key: "/products",
-      icon: <UnorderedListOutlined />,
-      label: "产品列表",
-    }
-  );
-
-  // 操作员：可以添加产品
-  if (role === "operator" || role === "admin") {
-    menuItems.push({
-      key: "/products/create",
-      icon: <PlusOutlined />,
-      label: "添加产品",
-    });
-  }
-
-  // 审核员 + 管理员：审核记录
-  if (role === "reviewer" || role === "admin") {
-    menuItems.push({
-      key: "/reviews",
-      icon: <AuditOutlined />,
-      label: "审核记录",
-    });
-  }
-
-  // 管理员：登录日志 + 用户管理
-  if (role === "admin") {
-    menuItems.push(
-      {
-        key: "/login-logs",
-        icon: <HistoryOutlined />,
-        label: "登录日志",
-      },
-      {
-        key: "/users",
-        icon: <UserOutlined />,
-        label: "用户管理",
-      }
-    );
-  }
-
-  // 最后加一个退出登录
-  menuItems.push({
-    key: "logout",
-    icon: <LogoutOutlined />,
-    label: "退出登录",
+  // 主页：所有角色都有
+  items.push({
+    key: "/dashboard",
+    icon: <DashboardOutlined />,
+    label: <Link to="/dashboard">主页</Link>,
   });
 
-  const handleMenuClick = ({ key }) => {
-    if (key === "logout") {
-      onLogout?.();
-      return;
-    }
-    navigate(key);
-  };
+  // 产品列表：所有角色
+  items.push({
+    key: "/products",
+    icon: <ShoppingOutlined />,
+    label: <Link to="/products">产品列表</Link>,
+  });
+
+  // 添加产品：操作员 + 管理员
+  if (role === "operator" || role === "admin") {
+    items.push({
+      key: "/products/create",
+      icon: <PlusOutlined />,
+      label: <Link to="/products/create">添加产品</Link>,
+    });
+  }
+
+  // 审核记录：审核员 + 管理员
+  if (role === "reviewer" || role === "admin") {
+    items.push({
+      key: "/reviews",
+      icon: <FileSearchOutlined />,
+      label: <Link to="/reviews">审核记录</Link>,
+    });
+  }
+
+  // 登录日志：只有管理员
+  if (role === "admin") {
+    items.push({
+      key: "/login-logs",
+      icon: <ClockCircleOutlined />,
+      label: <Link to="/login-logs">登录日志</Link>,
+    });
+  }
+
+  // 用户管理：只有管理员
+  if (role === "admin") {
+    items.push({
+      key: "/users",
+      icon: <TeamOutlined />,
+      label: <Link to="/users">用户管理</Link>,
+    });
+  }
+
+  // 匹配当前选中的菜单
+  const selectedKey =
+    items.find((item) => location.pathname.startsWith(item.key))?.key ||
+    "/dashboard";
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Sider theme="dark">
         <div
           style={{
-            height: 48,
-            margin: 16,
-            color: "#fff",
-            fontWeight: "bold",
-            fontSize: 18,
+            height: 64,
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontSize: 18,
+            fontWeight: 600,
           }}
         >
-          FBA 管理系统
+          FBA 管理后台
         </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          onClick={handleMenuClick}
-          items={menuItems}
-        />
+        <Menu theme="dark" mode="inline" selectedKeys={[selectedKey]} items={items} />
       </Sider>
       <Layout>
         <Header
@@ -116,28 +100,24 @@ export default function AppLayout({ user, onLogout, children }) {
             background: "#fff",
             padding: "0 24px",
             display: "flex",
-            justifyContent: "flex-end",
             alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
-          <span style={{ marginRight: 12 }}>当前用户：</span>
-          <strong>{user?.name}</strong>
-          <span style={{ marginLeft: 8, color: "#999" }}>
-            ({user?.role})
-          </span>
-        </Header>
-        <Content style={{ margin: 24 }}>
-          <div
-            style={{
-              background: "#fff",
-              padding: 24,
-              minHeight: 360,
-            }}
-          >
-            {children}
+          <div>
+            <Title level={4} style={{ margin: 0 }}>
+              欢迎，{user?.name || "用户"}
+            </Title>
+            <Text type="secondary">角色：{user?.role || "未知"}</Text>
           </div>
-        </Content>
+          <Button icon={<LogoutOutlined />} danger onClick={onLogout}>
+            退出登录
+          </Button>
+        </Header>
+        <Content style={{ padding: 24, background: "#f5f5f5" }}>{children}</Content>
       </Layout>
     </Layout>
   );
-}
+};
+
+export default AppLayout;

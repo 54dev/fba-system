@@ -1,19 +1,20 @@
-// src/pages/LoginLog.jsx
-
+// frontend/src/pages/LoginLog.jsx
 import React, { useEffect, useState } from "react";
-import { Table, Tag, message } from "antd";
+import { Table, message } from "antd";
+import { Link } from "react-router-dom";
 import { fetchLoginLogs } from "../api";
 import { formatDateTimeCn } from "../utils/time";
 
-export default function LoginLog() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+const LoginLog = () => {
+  const [loading, setLoading] = useState(false);
+  const [logs, setLogs] = useState([]);
 
   useEffect(() => {
+    setLoading(true);
     fetchLoginLogs()
-      .then((res) => setData(res || []))
-      .catch((err) => {
-        console.error(err);
+      .then((res) => setLogs(Array.isArray(res) ? res : []))
+      .catch((e) => {
+        console.error(e);
         message.error("加载登录日志失败");
       })
       .finally(() => setLoading(false));
@@ -23,54 +24,37 @@ export default function LoginLog() {
     {
       title: "ID",
       dataIndex: "id",
-      width: 60,
     },
     {
       title: "用户",
       dataIndex: "user_name",
-      render: (name, record) =>
-        name || record.user?.name || "-",
-    },
-    {
-      title: "邮箱",
-      dataIndex: "user_email",
-      render: (email, record) =>
-        email || record.user?.email || "-",
+      render: (val, record) =>
+        record.user_id ? (
+          <Link to={`/users/${record.user_id}`}>{val || `用户#${record.user_id}`}</Link>
+        ) : (
+          val || "-"
+        ),
     },
     {
       title: "IP 地址",
-      dataIndex: "ip",
-      render: (ip) => ip || "-",
-    },
-    {
-      title: "登录状态",
-      dataIndex: "status",
-      render: (value) => {
-        let color = "green";
-        let text = "成功";
-        if (value === "failed") {
-          color = "red";
-          text = "失败";
-        }
-        return <Tag color={color}>{text}</Tag>;
-      },
+      dataIndex: "ip_address",
+      render: (val, record) => val || record.ip || "-",
     },
     {
       title: "登录时间",
       dataIndex: "created_at",
-      render: (value) => formatDateTimeCn(value),
+      render: (val) => formatDateTimeCn(val),
     },
   ];
 
   return (
-    <>
-      <h2>登录日志</h2>
-      <Table
-        rowKey="id"
-        loading={loading}
-        dataSource={data}
-        columns={columns}
-      />
-    </>
+    <Table
+      rowKey="id"
+      loading={loading}
+      dataSource={logs}
+      columns={columns}
+    />
   );
-}
+};
+
+export default LoginLog;

@@ -1,65 +1,71 @@
 // frontend/src/pages/UserPage.jsx
 import React, { useEffect, useState } from "react";
-import { Table, Tag, Button, Form, Input, Select, Space, message, Card } from "antd";
-import { Link } from "react-router-dom";
-import { fetchUsers, createUser } from "../api";
+import { Table, Button, Tag, Space, Modal, Form, Input, Select, message } from "antd";
+import { Link, useNavigate } from "react-router-dom";
+import { fetchUsers, createUser, updateUser } from "../api";
+import { formatDateTimeCn } from "../utils/time";
 
-const { Option } = Select;
-
-const ROLE_LABEL = {
-  admin: "管理员",
-  reviewer: "审核员",
-  operator: "操作员",
-};
-
-export default function UserPage() {
-  const [users, setUsers] = useState([]);
+const UserPage = ({ user }) => {
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [form] = Form.useForm();
+  const navigate = useNavigate();
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      const res = await fetchUsers();
-
-      // ✅ 防御式处理，确保一定是数组
-      const list =
-        Array.isArray(res) ? res :
-        Array.isArray(res?.data) ? res.data :
-        Array.isArray(res?.users) ? res.users :
-        [];
-
-      setUsers(list);
-    } catch (e) {
-      console.error("加载用户失败:", e);
-      message.error("加载用户列表失败");
-      // ❗ 这里绝对不动 token，不做登出操作
-    } finally {
-      setLoading(false);
-    }
+  const loadUsers = () => {
+    setLoading(true);
+    fetchUsers()
+      .then((res) => setUsers(Array.isArray(res) ? res : []))
+      .catch((e) => {
+        console.error(e);
+        message.error("加载用户列表失败");
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     loadUsers();
   }, []);
 
-  const handleCreate = async (values) => {
+  const openCreateModal = () => {
+    setEditingUser(null);
+    form.resetFields();
+    setModalVisible(true);
+  };
+
+  const openEditModal = (record) => {
+    setEditingUser(record);
+    form.setFieldsValue({
+      name: record.name,
+      email: record.email,
+      role: record.role,
+    });
+    setModalVisible(true);
+  };
+
+  const handleSubmit = async () => {
     try {
-      setSaving(true);
-      await createUser(values);
-      message.success("创建用户成功");
-      form.resetFields();
+      const values = await form.validateFields();
+      if (editingUser) {
+        await updateUser(editingUser.id, values);
+        message.success("用户修改成功");
+      } else {
+        await createUser(values);
+        message.success("用户创建成功");
+      }
+      setModalVisible(false);
       loadUsers();
     } catch (e) {
-      console.error("创建用户失败:", e);
+      if (e.errorFields) return; // 表单校验错误
+      console.error(e);
       const msg =
-        e?.message ||
-        e?.response?.data?.message ||
-        "创建用户失败，请稍后重试";
+        e?.data?.errors
+          ? Object.values(e.data.errors)
+              .flat()
+              .join("；")
+          : e.message || "操作失败";
       message.error(msg);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -67,65 +73,85 @@ export default function UserPage() {
     {
       title: "ID",
       dataIndex: "id",
-      width: 80,
       render: (id) => <Link to={`/users/${id}`}>{id}</Link>,
     },
     {
       title: "姓名",
       dataIndex: "name",
-      width: 160,
     },
     {
       title: "邮箱",
       dataIndex: "email",
-      width: 220,
     },
     {
       title: "角色",
       dataIndex: "role",
-      width: 120,
       render: (role) => {
         let color = "default";
-        if (role === "admin") color = "red";
-        else if (role === "reviewer") color = "blue";
-        else if (role === "operator") color = "green";
-
-        return <Tag color={color}>{ROLE_LABEL[role] || role}</Tag>;
+        let text = role;
+        if (role === "admin") {
+          color = "red";
+          text = "管理员";
+        } else if (role === "reviewer") {
+          color = "blue";
+          text = "审核员";
+        } else if (role === "operator") {
+          color = "green";
+          text = "操作员";
+        }
+        return <Tag color={color}>{text || "-"}</Tag>;
       },
     },
     {
+      title: "创建时间",
+      dataIndex: "created_at",
+      render: (val) => formatDateTimeCn(val),
+    },
+    {
       title: "操作",
-      key: "actions",
-      width: 200,
       render: (_, record) => (
         <Space>
-          <Link to={`/users/${record.id}`}>详情</Link>
-          <Link to={`/users/${record.id}/edit`}>编辑</Link>
+          <Button type="link" onClick={() => navigate(`/users/${record.id}`)}>
+            详情
+          </Button>
+          <Button type="link" onClick={() => openEditModal(record)}>
+            编辑
+          </Button>
         </Space>
       ),
     },
   ];
 
-  const dataSource = Array.isArray(users) ? users : [];
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* 创建用户表单 */}
-      <Card title="创建新用户">
-        <Form
-          form={form}
-          layout="inline"
-          onFinish={handleCreate}
-          style={{ rowGap: 12 }}
-        >
+    <div>
+      <Space style={{ marginBottom: 16 }}>
+        <Button type="primary" onClick={openCreateModal}>
+          新建用户
+        </Button>
+      </Space>
+
+      <Table
+        rowKey="id"
+        loading={loading}
+        dataSource={users}
+        columns={columns}
+      />
+
+      <Modal
+        title={editingUser ? "编辑用户" : "新建用户"}
+        open={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        onOk={handleSubmit}
+        destroyOnClose
+      >
+        <Form form={form} layout="vertical">
           <Form.Item
             name="name"
             label="姓名"
             rules={[{ required: true, message: "请输入姓名" }]}
           >
-            <Input placeholder="用户姓名" style={{ width: 180 }} />
+            <Input />
           </Form.Item>
-
           <Form.Item
             name="email"
             label="邮箱"
@@ -134,48 +160,25 @@ export default function UserPage() {
               { type: "email", message: "邮箱格式不正确" },
             ]}
           >
-            <Input placeholder="邮箱" style={{ width: 220 }} />
+            <Input disabled={!!editingUser} />
           </Form.Item>
-
-          <Form.Item
-            name="password"
-            label="密码"
-            rules={[{ required: true, message: "请输入初始密码" }]}
-          >
-            <Input.Password placeholder="初始密码" style={{ width: 180 }} />
-          </Form.Item>
-
           <Form.Item
             name="role"
             label="角色"
-            initialValue="operator"
             rules={[{ required: true, message: "请选择角色" }]}
           >
-            <Select style={{ width: 140 }}>
-              <Option value="admin">管理员</Option>
-              <Option value="reviewer">审核员</Option>
-              <Option value="operator">操作员</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={saving}>
-              创建用户
-            </Button>
+            <Select
+              options={[
+                { value: "admin", label: "管理员" },
+                { value: "reviewer", label: "审核员" },
+                { value: "operator", label: "操作员" },
+              ]}
+            />
           </Form.Item>
         </Form>
-      </Card>
-
-      {/* 用户列表 */}
-      <Card title="用户列表">
-        <Table
-          rowKey="id"
-          loading={loading}
-          columns={columns}
-          dataSource={dataSource}
-          pagination={{ pageSize: 10 }}
-        />
-      </Card>
+      </Modal>
     </div>
   );
-}
+};
+
+export default UserPage;

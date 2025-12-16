@@ -7,46 +7,77 @@ use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\LoginLogController;
 use App\Http\Controllers\UserController;
 
-// 登录
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
+
+// 登录（不需要鉴权）
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
+    /*
+    |--------------------------------------------------------------------------
+    | 认证
+    |--------------------------------------------------------------------------
+    */
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Dashboard
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard
+    |--------------------------------------------------------------------------
+    */
     Route::get('/dashboard', [ProductController::class, 'dashboard']);
 
-    // 产品管理
+    /*
+    |--------------------------------------------------------------------------
+    | 产品管理
+    |--------------------------------------------------------------------------
+    */
+    // 列表
     Route::get('/products', [ProductController::class, 'index']);
+
+    // 创建
     Route::post('/products', [ProductController::class, 'store']);
 
-    // 产品详情（你新需求必备）
-    Route::get('/products/{id}', [ProductController::class, 'show']);
+    // ⭐ 更新（编辑页必须，POST + FormData + _method）
+    Route::post('/products/{product}', [ProductController::class, 'update']);
 
-    // 审核产品
-    Route::put('/products/{product}/review', [ProductController::class, 'updateReview'])
-        ->middleware('role:admin,reviewer');
+    // ⭐ 详情（统一参数名，保证 Route Model Binding）
+    Route::get('/products/{product}', [ProductController::class, 'show']);
 
-    // 审核记录
-    Route::get('/reviews', [ProductReviewController::class, 'index'])
-        ->middleware('role:admin,reviewer');
+    /*
+    |--------------------------------------------------------------------------
+    | 审核产品（权限在 Controller 内判断）
+    |--------------------------------------------------------------------------
+    */
+    Route::put('/products/{product}/review', [ProductController::class, 'updateReview']);
 
-    // 登录日志（只有管理员）
-    Route::get('/login-logs', [LoginLogController::class, 'index'])
-        ->middleware('role:admin');
+    /*
+    |--------------------------------------------------------------------------
+    | 审核记录
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/reviews', [ProductReviewController::class, 'index']);
 
-    // 用户管理（管理员）
-    Route::get('/users', [UserController::class, 'index'])
-        ->middleware('role:admin');
-    Route::post('/users', [UserController::class, 'store'])
-        ->middleware('role:admin');
+    /*
+    |--------------------------------------------------------------------------
+    | 登录日志
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/login-logs', [LoginLogController::class, 'index']);
 
-    // 用户详情（管理员、审核员都能看）
+    /*
+    |--------------------------------------------------------------------------
+    | 用户管理
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users', [UserController::class, 'store']);
     Route::get('/users/{id}', [UserController::class, 'show']);
-
-    // 用户更新（仅管理员）
-    Route::put('/users/{id}', [UserController::class, 'update'])
-        ->middleware('role:admin');
+    Route::put('/users/{id}', [UserController::class, 'update']);
 });

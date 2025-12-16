@@ -1,4 +1,5 @@
 <?php
+// app/Models/Product.php
 
 namespace App\Models;
 
@@ -6,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Product extends Model
 {
@@ -34,7 +36,7 @@ class Product extends Model
     }
 
     /**
-     * 审核记录
+     * 所有审核记录（历史）
      */
     public function reviews(): HasMany
     {
@@ -42,8 +44,16 @@ class Product extends Model
     }
 
     /**
+     * 当前审核结果（Controller 正在用的关系）
+     * 语义：最新一条审核记录
+     */
+    public function review(): HasOne
+    {
+        return $this->hasOne(ProductReview::class)->latestOfMany();
+    }
+
+    /**
      * 计算属性：完整图片 URL
-     * 前端直接用 product.image_url 即可
      */
     public function getImageUrlAttribute(): ?string
     {
@@ -51,7 +61,6 @@ class Product extends Model
             return null;
         }
 
-        // 生成类似 http://localhost/storage/products/xxx.jpg
         return url('/storage/' . ltrim($this->image_path, '/'));
     }
 }

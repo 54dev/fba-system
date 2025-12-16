@@ -1,116 +1,154 @@
-// src/pages/ProductDetail.jsx
-
+// frontend/src/pages/ProductDetail.jsx
 import React, { useEffect, useState } from "react";
-import { Card, Descriptions, Image, Spin, Tag, message } from "antd";
-import { useParams } from "react-router-dom";
+import { Card, Descriptions, Tag, Space, Button, message } from "antd";
+import { useParams, useNavigate } from "react-router-dom";
 import { getProductDetail } from "../api";
 import { formatDateTimeCn } from "../utils/time";
 
-export default function ProductDetail() {
+const statusColorMap = {
+  pending: "gold",
+  approved: "green",
+  rejected: "red",
+};
+
+const ProductDetail = ({ user }) => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     getProductDetail(id)
-      .then((data) => setProduct(data))
-      .catch((err) => {
-        console.error(err);
+      .then((res) => setProduct(res))
+      .catch((e) => {
+        console.error(e);
         message.error("加载产品详情失败");
       })
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) {
-    return <Spin tip="加载中..." />;
-  }
-
   if (!product) {
-    return <div>未找到该产品</div>;
+    return <Card loading={loading}>加载中...</Card>;
   }
 
-  let statusText = "待审核";
-  let statusColor = "default";
-  if (product.review_result === "approved") {
-    statusText = "已通过";
-    statusColor = "green";
-  } else if (product.review_result === "rejected") {
-    statusText = "已拒绝";
-    statusColor = "red";
-  }
+  const canEdit =
+    user &&
+    (user.role === "admin" || user.role === "operator") &&
+    product.review_result !== "approved" &&
+    (user.role !== "operator" || product.user_id === user.id);
 
-  const imgUrl = product.image_url || product.image_path_url;
+  const status = product.review_result;
+  const color = statusColorMap[status] || "default";
+  let statusText = status;
+  if (status === "pending") statusText = "待审核";
+  if (status === "approved") statusText = "已通过";
+  if (status === "rejected") statusText = "已拒绝";
+
+  const links = [
+    product.reference_link_1,
+    product.reference_link_2,
+    product.reference_link_3,
+  ].filter(Boolean);
+
+  const lastReview =
+    product.latest_review ||
+    product.latestReview ||
+    (Array.isArray(product.reviews) ? product.reviews[0] : null);
 
   return (
-    <Card title={`产品详情 #${product.id}`}>
-      <Descriptions column={2} bordered size="middle">
-        <Descriptions.Item label="产品图片" span={2}>
-          {imgUrl ? (
-            <Image src={imgUrl} width={240} />
-          ) : (
-            "-"
+    <Card
+      title={`产品详情 #${product.id}`}
+      extra={
+        canEdit && (
+          <Button
+            type="primary"
+            onClick={() => navigate(`/products/${product.id}/edit`)}
+          >
+            编辑产品
+          </Button>
+        )
+      }
+      loading={loading}
+    >
+      <Space align="start" size={24}>
+        {product.image_url || product.image_path || product.image ? (
+          <img
+            src={
+              product.image_url ||
+              product.image_path ||
+              product.image
+            }
+            alt="产品图"
+            style={{ width: 200, height: 200, objectFit: "cover" }}
+          />
+        ) : null}
+
+        <Descriptions column={1} bordered size="small">
+          <Descriptions.Item label="产品 ID">
+            {product.id}
+          </Descriptions.Item>
+          <Descriptions.Item label="提交人">
+            {product.user?.name || `用户#${product.user_id}`}
+          </Descriptions.Item>
+          <Descriptions.Item label="状态">
+            <Tag color={color}>{statusText}</Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label="参考链接">
+            {links.length ? (
+              <Space direction="vertical">
+                {links.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    链接 {idx + 1}
+                  </a>
+                ))}
+              </Space>
+            ) : (
+              "-"
+            )}
+          </Descriptions.Item>
+          <Descriptions.Item label="开发理由">
+            {product.reason || "-"}
+          </Descriptions.Item>
+          <Descriptions.Item label="差异化">
+            {product.differentiation || "-"}
+          </Descriptions.Item>
+          <Descriptions.Item label="提交时间">
+            {formatDateTimeCn(product.created_at)}
+          </Descriptions.Item>
+          <Descriptions.Item label="最后更新时间">
+            {formatDateTimeCn(product.updated_at)}
+          </Descriptions.Item>
+          {lastReview && (
+            <>
+              <Descriptions.Item label="最新审核结果">
+                {lastReview.result === "approved"
+                  ? "通过"
+                  : lastReview.result === "rejected"
+                  ? "拒绝"
+                  : "待审核"}
+              </Descriptions.Item>
+              <Descriptions.Item label="审核人">
+                {lastReview.reviewer?.name ||
+                  `ID: ${lastReview.reviewer_id}`}
+              </Descriptions.Item>
+              <Descriptions.Item label="审核时间">
+                {formatDateTimeCn(lastReview.created_at)}
+              </Descriptions.Item>
+              <Descriptions.Item label="审核意见">
+                {lastReview.comment || "-"}
+              </Descriptions.Item>
+            </>
           )}
-        </Descriptions.Item>
-        <Descriptions.Item label="提交人">
-          {product.user?.name} ({product.user?.email})
-        </Descriptions.Item>
-        <Descriptions.Item label="审核状态">
-          <Tag color={statusColor}>{statusText}</Tag>
-        </Descriptions.Item>
-        <Descriptions.Item label="参考链接" span={2}>
-          <div>
-            {product.reference_link_1 && (
-              <div>
-                <a
-                  href={product.reference_link_1}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  链接 1
-                </a>
-              </div>
-            )}
-            {product.reference_link_2 && (
-              <div>
-                <a
-                  href={product.reference_link_2}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  链接 2
-                </a>
-              </div>
-            )}
-            {product.reference_link_3 && (
-              <div>
-                <a
-                  href={product.reference_link_3}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  链接 3
-                </a>
-              </div>
-            )}
-            {!product.reference_link_1 &&
-              !product.reference_link_2 &&
-              !product.reference_link_3 &&
-              "-"}
-          </div>
-        </Descriptions.Item>
-        <Descriptions.Item label="开发理由" span={2}>
-          {product.reason || "-"}
-        </Descriptions.Item>
-        <Descriptions.Item label="差异化" span={2}>
-          {product.differentiation || "-"}
-        </Descriptions.Item>
-        <Descriptions.Item label="创建时间">
-          {formatDateTimeCn(product.created_at)}
-        </Descriptions.Item>
-        <Descriptions.Item label="更新时间">
-          {formatDateTimeCn(product.updated_at)}
-        </Descriptions.Item>
-      </Descriptions>
+        </Descriptions>
+      </Space>
     </Card>
   );
-}
+};
+
+export default ProductDetail;

@@ -1,196 +1,178 @@
-// src/pages/ProductList.jsx
-
+// frontend/src/pages/ProductList.jsx
 import React, { useEffect, useState } from "react";
-import { Table, Tag, Space, Button, Modal, message, Image } from "antd";
-import { useNavigate } from "react-router-dom";
-import { fetchProducts, updateProductReview } from "../api";
+import { Table, Button, Tag, Space, message, Tooltip } from "antd";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  fetchProducts,
+  updateProductReview,
+} from "../api";
 import { formatDateTimeCn } from "../utils/time";
 
-const { confirm } = Modal;
+const statusColorMap = {
+  pending: "gold",
+  approved: "green",
+  rejected: "red",
+};
 
-export default function ProductList({ user }) {
+const ProductList = ({ user }) => {
+  const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const role = user?.role;
 
-  const role = user?.role || "operator";
-
-  const load = () => {
+  const loadData = () => {
     setLoading(true);
     fetchProducts()
-      .then((res) => setData(res || []))
-      .catch((err) => {
-        console.error(err);
+      .then((res) => {
+        setData(Array.isArray(res) ? res : []);
+      })
+      .catch((e) => {
+        console.error(e);
         message.error("加载产品列表失败");
       })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    load();
+    loadData();
   }, []);
 
-  const showReviewConfirm = (record, result) => {
-    let title = result === "approved" ? "确认通过该产品？" : "确认拒绝该产品？";
+  const handleReview = async (record, result) => {
+    try {
+      await updateProductReview(record.id, {
+        result,
+        comment: "",
+      });
+      message.success("审核操作成功");
+      loadData();
+    } catch (e) {
+      console.error(e);
+      message.error(e.message || "审核失败");
+    }
+  };
 
-    let commentValue = "";
-
-    confirm({
-      title,
-      content: (
-        <textarea
-          style={{ width: "100%", minHeight: 80 }}
-          placeholder="可选：填写审核意见"
-          onChange={(e) => {
-            commentValue = e.target.value;
-          }}
-        />
-      ),
-      okText: "确认",
-      cancelText: "取消",
-      async onOk() {
-        try {
-          await updateProductReview(record.id, {
-            result,
-            comment: commentValue,
-          });
-          message.success("审核结果已更新");
-          load();
-        } catch (err) {
-          console.error(err);
-          message.error(err.message || "审核失败");
-        }
-      },
-    });
+  const canEditProduct = (record) => {
+    // 仅本人 + 待审核/拒绝 才可编辑
+    if (!user) return false;
+    if (role !== "operator" && role !== "admin") return false;
+    if (role === "operator" && record.user_id !== user.id) return false;
+    return record.review_result !== "approved";
   };
 
   const columns = [
     {
       title: "ID",
       dataIndex: "id",
-      width: 60,
-      render: (id) => (
-        <Button
-          type="link"
-          onClick={() => navigate(`/products/${id}`)}
-        >
-          {id}
-        </Button>
-      ),
+      render: (id) => <Link to={`/products/${id}`}>{id}</Link>,
     },
     {
       title: "图片",
       dataIndex: "image_url",
-      width: 120,
       render: (_, record) => {
-        const url = record.image_url || record.image_path_url;
+        const url =
+          record.image_url ||
+          record.image_path ||
+          record.image ||
+          "";
         if (!url) return "-";
         return (
-          <Image
+          <img
             src={url}
-            width={80}
-            style={{ objectFit: "cover" }}
-            onClick={() => navigate(`/products/${record.id}`)}
+            alt="产品图"
+            style={{ width: 60, height: 60, objectFit: "cover" }}
           />
         );
       },
     },
     {
       title: "提交人",
-      dataIndex: "user",
-      render: (user) => user?.name || "-",
+      dataIndex: ["user", "name"],
+      render: (_, record) => record.user?.name || `用户#${record.user_id}`,
     },
     {
       title: "参考链接",
-      dataIndex: "reference_link_1",
       render: (_, record) => {
         const links = [
           record.reference_link_1,
           record.reference_link_2,
           record.reference_link_3,
         ].filter(Boolean);
-
-        if (links.length === 0) return "-";
+        if (!links.length) return "-";
+        return (
+          <Space direction="vertical" size={0}>
+            {links.map((link, idx) => (
+              <a
+                key={idx}
+                href={link}
+                target="_blank"
+                rel="noreferrer"
+                style={{ display: "block", maxWidth: 220 }}
+              >
+                <Tooltip title={link}>
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      display: "inline-block",
+                      maxWidth: 220,
+                    }}
+                  >
+                    链接 {idx + 1}
+                  </span>
+                </Tooltip>
+              </a>
+            ))}
+          </Space>
+        );
+      },
+    },
+    {
+      title: "状态",
+      dataIndex: "review_result",
+      render: (val) => {
+        const color = statusColorMap[val] || "default";
+        let text = val;
+        if (val === "pending") text = "待审核";
+        if (val === "approved") text = "已通过";
+        if (val === "rejected") text = "已拒绝";
+        return <Tag color={color}>{text || "-"}</Tag>;
+      },
+    },
+    {
+      title: "最新审核",
+      render: (_, record) => {
+        const review = record.latest_review || record.latestReview;
+        if (!review) return "-";
+        const reviewerName =
+          review.reviewer?.name || `ID: ${review.reviewer_id}`;
+        const result = review.result;
+        const resultText =
+          result === "approved"
+            ? "通过"
+            : result === "rejected"
+            ? "拒绝"
+            : "待审核";
 
         return (
           <div>
-            {links.map((url, idx) => (
-              <div key={idx}>
-                <a href={url} target="_blank" rel="noreferrer">
-                  链接 {idx + 1}
-                </a>
-              </div>
-            ))}
+            <div>结果：{resultText}</div>
+            <div>审核人：{reviewerName}</div>
           </div>
         );
       },
     },
     {
-      title: "开发理由",
-      dataIndex: "reason",
-      ellipsis: true,
-    },
-    {
-      title: "差异化",
-      dataIndex: "differentiation",
-      ellipsis: true,
-    },
-    {
-      title: "审核状态",
-      dataIndex: "review_result",
-      width: 100,
-      render: (value) => {
-        let color = "default";
-        let text = "待审核";
-        if (value === "approved") {
-          color = "green";
-          text = "已通过";
-        } else if (value === "rejected") {
-          color = "red";
-          text = "已拒绝";
-        }
-        return <Tag color={color}>{text}</Tag>;
-      },
-    },
-    {
-      title: "更新时间",
-      dataIndex: "updated_at",
-      render: (value) => formatDateTimeCn(value),
+      title: "提交时间",
+      dataIndex: "created_at",
+      render: (val) => formatDateTimeCn(val),
     },
     {
       title: "操作",
-      key: "actions",
-      width: 220,
       render: (_, record) => {
         const actions = [];
 
-        // 管理员 / 审核员：审核按钮
-        if (role === "admin" || role === "reviewer") {
-          actions.push(
-            <Button
-              key="approve"
-              type="link"
-              onClick={() => showReviewConfirm(record, "approved")}
-            >
-              通过
-            </Button>,
-            <Button
-              key="reject"
-              type="link"
-              danger
-              onClick={() => showReviewConfirm(record, "rejected")}
-            >
-              拒绝
-            </Button>
-          );
-        }
-
-        // 操作员：在待审核 / 已拒绝时可以编辑
-        if (
-          role === "operator" &&
-          (record.review_result === "pending" ||
-            record.review_result === "rejected")
-        ) {
+        if (canEditProduct(record)) {
           actions.push(
             <Button
               key="edit"
@@ -202,20 +184,46 @@ export default function ProductList({ user }) {
           );
         }
 
+        if (role === "admin" || role === "reviewer") {
+          actions.push(
+            <Button
+              key="approve"
+              type="link"
+              onClick={() => handleReview(record, "approved")}
+              disabled={record.review_result === "approved"}
+            >
+              通过
+            </Button>
+          );
+          actions.push(
+            <Button
+              key="reject"
+              type="link"
+              danger
+              onClick={() => handleReview(record, "rejected")}
+              disabled={record.review_result === "rejected"}
+            >
+              拒绝
+            </Button>
+          );
+        }
+
+        if (!actions.length) return "-";
         return <Space>{actions}</Space>;
       },
     },
   ];
 
   return (
-    <>
-      <h2>产品列表</h2>
+    <div>
       <Table
         rowKey="id"
         loading={loading}
         dataSource={data}
         columns={columns}
       />
-    </>
+    </div>
   );
-}
+};
+
+export default ProductList;
